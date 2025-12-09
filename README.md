@@ -1,50 +1,135 @@
-# Welcome to your Expo app 👋
+# Moody - Mood Tracking App 😊
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile app built with Expo that helps you track your daily moods and visualize mood trends over time.
 
-## Get started
+## Features
 
-1. Install dependencies
+- 📊 Track your mood with emoji selections (Very Happy, Happy, Neutral, Sad, Very Sad)
+- 📈 View mood statistics and trends over the last 7 days
+- 📅 Compare today's mood with yesterday
+- 🔥 Firebase backend for data persistence
+- 📱 Beautiful, intuitive UI with tab navigation
 
-   ```bash
-   npm install
-   ```
+## Setup Instructions
 
-2. Start the app
+### 1. Install Dependencies
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Dependencies are already installed. If you need to reinstall:
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Configure Firebase
 
-## Learn more
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project (or use an existing one)
+3. Click on "Add app" and select the Web platform (</> icon)
+4. Register your app and copy the Firebase configuration
+5. Open `config/firebase.ts` and replace the placeholder values with your Firebase config:
 
-To learn more about developing your project with Expo, look at the following resources:
+```typescript
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 3. Set Up Firestore Database
 
-## Join the community
+1. In Firebase Console, go to "Firestore Database"
+2. Click "Create database"
+3. Choose "Start in test mode" (for development)
+4. Select your preferred region
+5. Click "Enable"
 
-Join our community of developers creating universal apps.
+### 4. Configure Firestore Rules (Optional but Recommended)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Replace the default rules with:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /moods/{document=**} {
+      allow read, write: if true;  // For development only
+    }
+  }
+}
+```
+
+For production, implement proper authentication and security rules.
+
+### 5. Run the App
+
+```bash
+npx expo start
+```
+
+Then:
+- Press `a` for Android emulator
+- Press `i` for iOS simulator
+- Scan QR code with Expo Go app on your phone
+
+## Project Structure
+
+```
+Moody/
+├── app/
+│   ├── _layout.tsx       # Tab navigation layout
+│   ├── index.tsx         # Mood tracking screen
+│   ├── stats.tsx         # Statistics and graphs screen
+│   └── global.css        # Global styles
+├── config/
+│   └── firebase.ts       # Firebase configuration
+├── services/
+│   └── moodService.ts    # Firebase Firestore operations
+├── types/
+│   └── mood.ts           # TypeScript types and mood definitions
+└── package.json
+```
+
+## How It Works
+
+1. **Track Mood**: Select your current mood from 5 emoji options
+2. **Save to Firebase**: Mood is saved with timestamp and user ID
+3. **View Stats**: See your mood trends over the past 7 days
+4. **Compare**: View today vs yesterday mood comparison
+
+## Technologies Used
+
+- React Native with Expo
+- TypeScript
+- Firebase Firestore
+- React Native Chart Kit
+- Expo Router (File-based routing)
+- AsyncStorage (for user ID persistence)
+
+## Notes
+
+- Each device gets a unique user ID stored locally
+- Moods are stored with timestamps for trend analysis
+- Charts show average mood values (1-5 scale)
+- Data persists across app sessions via Firebase
+
+## Troubleshooting
+
+If you encounter errors:
+
+1. Make sure Firebase config is correct in `config/firebase.ts`
+2. Verify Firestore database is created and enabled
+3. Check that internet connection is available
+4. Clear cache with `npx expo start -c`
+
+## Future Enhancements
+
+- Add user authentication
+- Include notes/journal entries with moods
+- More detailed analytics and insights
+- Mood reminders/notifications
+- Export mood data
+- Dark mode support
