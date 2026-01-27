@@ -294,6 +294,8 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Moody API is running" });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Moody API server is running on port ${PORT}`);
+  console.log(`Local: http://localhost:${PORT}/api/health`);
+  console.log(`Network: http://192.168.1.5:${PORT}/api/health`);
 });

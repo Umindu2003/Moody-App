@@ -1,8 +1,19 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { MoodInsights } from "../types/mood";
 
 const USER_ID_KEY = "@moody_user_id";
-const API_BASE_URL = "http://localhost:3001/api"; // Change this to your API server URL
+
+// Get the correct API base URL based on platform
+const getApiBaseUrl = () => {
+  if (Platform.OS === "web") {
+    return "http://localhost:3001/api";
+  }
+  // For mobile devices, use your local network IP
+  return "http://192.168.1.5:3001/api";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Generate or retrieve a unique user ID
 export async function getUserId(): Promise<string> {
