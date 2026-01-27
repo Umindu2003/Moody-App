@@ -455,23 +455,6 @@ export default function Stats() {
           <TouchableOpacity
             style={[
               styles.periodButton,
-              selectedPeriod === "today" && styles.periodButtonActive,
-            ]}
-            onPress={() => setSelectedPeriod("today")}
-          >
-            <Text
-              style={[
-                styles.periodText,
-                selectedPeriod === "today" && styles.periodTextActive,
-              ]}
-            >
-              Today
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
               selectedPeriod === "week" && styles.periodButtonActive,
             ]}
             onPress={() => setSelectedPeriod("week")}

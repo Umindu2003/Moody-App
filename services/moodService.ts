@@ -9,11 +9,19 @@ const getApiBaseUrl = () => {
   if (Platform.OS === "web") {
     return "http://localhost:3001/api";
   }
-  // For mobile devices, use your local network IP
-  return "http://192.168.1.5:3001/api";
+  if (Platform.OS === "android") {
+    // For Android physical device, use your local network IP
+    // For Android emulator, use 10.0.2.2
+    return "http://192.168.1.2:3001/api";
+  }
+  // For iOS simulator and physical devices, use your local network IP
+  return "http://192.168.1.2:3001/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();
+console.log(
+  `[Moody API] Using API base URL: ${API_BASE_URL} (Platform: ${Platform.OS})`,
+);
 
 // Generate or retrieve a unique user ID
 export async function getUserId(): Promise<string> {
