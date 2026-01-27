@@ -1,6 +1,6 @@
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import { MOODS } from '../types/mood';
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
+import { MOODS } from "../types/mood";
 
 interface ExportData {
   period: string;
@@ -13,40 +13,40 @@ interface ExportData {
 export async function generateAndSharePDF(data: ExportData): Promise<void> {
   try {
     const htmlContent = generateHTMLContent(data);
-    const fileName = `Moody_Report_${data.period}_${new Date().toISOString().split('T')[0]}.html`;
-    const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+    const fileName = `Moody_Report_${data.period}_${new Date().toISOString().split("T")[0]}.pdf`;
 
-    // Write HTML file
-    await FileSystem.writeAsStringAsync(fileUri, htmlContent, {
-      encoding: FileSystem.EncodingType.UTF8,
+    // Generate PDF from HTML
+    const { uri } = await Print.printToFileAsync({
+      html: htmlContent,
+      base64: false,
     });
 
-    // Share the file
+    // Share the PDF file - user can choose to save it manually
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(fileUri, {
-        mimeType: 'text/html',
-        dialogTitle: 'Share Mood Report',
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: "Save or Share Mood Report",
       });
     } else {
-      throw new Error('Sharing is not available on this device');
+      throw new Error("Sharing is not available on this device");
     }
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error("Error generating PDF:", error);
     throw error;
   }
 }
 
 function generateHTMLContent(data: ExportData): string {
   const { period, insights, moodData, comparison, distribution } = data;
-  const currentDate = new Date().toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const currentDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 
   // Calculate additional stats
   const moodCounts: { [key: string]: number } = {};
-  moodData.forEach(entry => {
+  moodData.forEach((entry) => {
     moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
   });
 
@@ -341,7 +341,9 @@ function generateHTMLContent(data: ExportData): string {
       <div class="period-badge">${period.toUpperCase()} REPORT</div>
     </div>
     
-    ${insights && insights.totalEntries > 0 ? `
+    ${
+      insights && insights.totalEntries > 0
+        ? `
     <div class="section">
       <h2 class="section-title">Key Insights</h2>
       <div class="insights-grid">
@@ -372,36 +374,46 @@ function generateHTMLContent(data: ExportData): string {
         </div>
       </div>
     </div>
-    ` : ''}
+    `
+        : ""
+    }
     
-    ${comparison ? `
+    ${
+      comparison
+        ? `
     <div class="section">
       <h2 class="section-title">Period Comparison</h2>
       <div class="comparison-row">
         <div class="comparison-card">
           <div class="comparison-label">${comparison.previousLabel}</div>
-          <div class="comparison-emoji">${comparison.previousMood ? comparison.previousMood.emoji : '😐'}</div>
+          <div class="comparison-emoji">${comparison.previousMood ? comparison.previousMood.emoji : "😐"}</div>
           <div class="comparison-value">
-            ${comparison.previousAvg > 0 ? comparison.previousAvg.toFixed(1) : 'No data'}
+            ${comparison.previousAvg > 0 ? comparison.previousAvg.toFixed(1) : "No data"}
           </div>
         </div>
         
         <div class="comparison-card">
           <div class="comparison-label">${comparison.currentLabel}</div>
-          <div class="comparison-emoji">${comparison.currentMood ? comparison.currentMood.emoji : '😐'}</div>
+          <div class="comparison-emoji">${comparison.currentMood ? comparison.currentMood.emoji : "😐"}</div>
           <div class="comparison-value">
-            ${comparison.currentAvg > 0 ? comparison.currentAvg.toFixed(1) : 'No data'}
+            ${comparison.currentAvg > 0 ? comparison.currentAvg.toFixed(1) : "No data"}
           </div>
         </div>
       </div>
     </div>
-    ` : ''}
+    `
+        : ""
+    }
     
-    ${distribution && distribution.length > 0 ? `
+    ${
+      distribution && distribution.length > 0
+        ? `
     <div class="section">
       <h2 class="section-title">Mood Distribution</h2>
       <ul class="distribution-list">
-        ${distribution.map(item => `
+        ${distribution
+          .map(
+            (item) => `
           <li class="distribution-item">
             <span class="emoji">${item.name}</span>
             <div class="info">
@@ -411,31 +423,44 @@ function generateHTMLContent(data: ExportData): string {
               <span class="percentage">${item.percentage}%</span>
             </div>
           </li>
-        `).join('')}
+        `,
+          )
+          .join("")}
       </ul>
     </div>
-    ` : ''}
+    `
+        : ""
+    }
     
-    ${moodData && moodData.length > 0 ? `
+    ${
+      moodData && moodData.length > 0
+        ? `
     <div class="section">
       <h2 class="section-title">Recent Mood Entries</h2>
       <div class="mood-list">
-        ${moodData.slice(0, 15).map(entry => `
+        ${moodData
+          .slice(0, 15)
+          .map(
+            (entry) => `
           <div class="mood-item">
             <span class="emoji">${entry.emoji}</span>
             <div class="content">
               <div class="mood-name">${entry.mood}</div>
-              ${entry.note ? `<div class="note">"${entry.note}"</div>` : ''}
+              ${entry.note ? `<div class="note">"${entry.note}"</div>` : ""}
               <div class="date">
                 ${new Date(entry.timestamp.toDate()).toLocaleDateString()} at 
-                ${new Date(entry.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                ${new Date(entry.timestamp.toDate()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
             </div>
           </div>
-        `).join('')}
+        `,
+          )
+          .join("")}
       </div>
     </div>
-    ` : ''}
+    `
+        : ""
+    }
     
     <div class="footer">
       <div class="logo">Moody</div>
@@ -450,16 +475,22 @@ function generateHTMLContent(data: ExportData): string {
 
 function getTrendEmoji(trend: string): string {
   switch (trend) {
-    case 'improving': return '📈';
-    case 'declining': return '📉';
-    default: return '➡️';
+    case "improving":
+      return "📈";
+    case "declining":
+      return "📉";
+    default:
+      return "➡️";
   }
 }
 
 function getTrendColor(trend: string): string {
   switch (trend) {
-    case 'improving': return '#4caf50';
-    case 'declining': return '#f44336';
-    default: return '#ffc107';
+    case "improving":
+      return "#4caf50";
+    case "declining":
+      return "#f44336";
+    default:
+      return "#ffc107";
   }
 }
