@@ -1,7 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { Animated, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { getAllMoodEntries, getUserId } from '../services/moodService';
-import { MOODS } from '../types/mood';
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  Animated,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { getAllMoodEntries, getUserId } from "../services/moodService";
+import { MOODS } from "../types/mood";
 
 export default function History() {
   const [moodData, setMoodData] = useState<any[]>([]);
@@ -13,13 +22,20 @@ export default function History() {
 
   useEffect(() => {
     loadMoodData();
-    
+
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 600,
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadMoodData();
+    }, []),
+  );
 
   useEffect(() => {
     applyFilter();
@@ -31,7 +47,7 @@ export default function History() {
       const entries = await getAllMoodEntries(userId);
       setMoodData(entries);
     } catch (error) {
-      console.error('Error loading mood data:', error);
+      console.error("Error loading mood data:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -42,7 +58,9 @@ export default function History() {
     if (selectedFilter === null) {
       setFilteredData(moodData);
     } else {
-      setFilteredData(moodData.filter(entry => entry.value === selectedFilter));
+      setFilteredData(
+        moodData.filter((entry) => entry.value === selectedFilter),
+      );
     }
   };
 
@@ -54,7 +72,7 @@ export default function History() {
   const renderMoodItem = ({ item }: { item: any }) => {
     const date = item.timestamp.toDate();
     const timeAgo = getTimeAgo(date);
-    
+
     return (
       <View style={styles.moodItem}>
         <View style={styles.moodHeader}>
@@ -63,7 +81,11 @@ export default function History() {
             <Text style={styles.moodLabel}>{item.mood}</Text>
             <Text style={styles.timeText}>{timeAgo}</Text>
             <Text style={styles.dateText}>
-              {date.toLocaleDateString()} at {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {date.toLocaleDateString()} at{" "}
+              {date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </Text>
           </View>
         </View>
@@ -78,8 +100,8 @@ export default function History() {
 
   const getTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    
-    if (seconds < 60) return 'Just now';
+
+    if (seconds < 60) return "Just now";
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
     if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
@@ -97,18 +119,26 @@ export default function History() {
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <Text style={styles.title}>Mood History</Text>
-      
+
       {/* Filter Buttons */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
-          style={[styles.filterButton, selectedFilter === null && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            selectedFilter === null && styles.filterButtonActive,
+          ]}
           onPress={() => setSelectedFilter(null)}
         >
-          <Text style={[styles.filterText, selectedFilter === null && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              selectedFilter === null && styles.filterTextActive,
+            ]}
+          >
             All
           </Text>
         </TouchableOpacity>
-        
+
         {MOODS.map((mood) => (
           <TouchableOpacity
             key={mood.value}
@@ -139,10 +169,14 @@ export default function History() {
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateEmoji}>📝</Text>
           <Text style={styles.emptyStateText}>
-            {selectedFilter ? 'No moods found for this filter' : 'No moods recorded yet'}
+            {selectedFilter
+              ? "No moods found for this filter"
+              : "No moods recorded yet"}
           </Text>
           <Text style={styles.emptyStateSubtext}>
-            {selectedFilter ? 'Try selecting a different mood' : 'Start tracking your mood today!'}
+            {selectedFilter
+              ? "Try selecting a different mood"
+              : "Start tracking your mood today!"}
           </Text>
         </View>
       )}
@@ -153,23 +187,23 @@ export default function History() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     padding: 20,
     paddingBottom: 10,
-    color: '#333',
+    color: "#333",
   },
   loadingText: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 50,
     fontSize: 18,
-    color: '#666',
+    color: "#666",
   },
   filterContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     paddingBottom: 15,
     gap: 10,
@@ -178,26 +212,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderWidth: 2,
-    borderColor: '#e0e0e0',
-    shadowColor: '#000',
+    borderColor: "#e0e0e0",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   filterButtonActive: {
-    backgroundColor: '#4caf50',
-    borderColor: '#4caf50',
+    backgroundColor: "#4caf50",
+    borderColor: "#4caf50",
   },
   filterText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: "600",
+    color: "#666",
   },
   filterTextActive: {
-    color: 'white',
+    color: "white",
   },
   filterEmoji: {
     fontSize: 20,
@@ -207,19 +241,19 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   moodItem: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 15,
     padding: 15,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   moodHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
   emoji: {
     fontSize: 40,
@@ -230,36 +264,36 @@ const styles = StyleSheet.create({
   },
   moodLabel: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
   },
   timeText: {
     fontSize: 14,
-    color: '#4caf50',
-    fontWeight: '500',
+    color: "#4caf50",
+    fontWeight: "500",
     marginBottom: 2,
   },
   dateText: {
     fontSize: 13,
-    color: '#999',
+    color: "#999",
   },
   noteContainer: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: "#f0f0f0",
   },
   noteText: {
     fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
     lineHeight: 20,
   },
   emptyState: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
@@ -269,14 +303,14 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: "600",
+    color: "#666",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
+    color: "#999",
+    textAlign: "center",
   },
 });

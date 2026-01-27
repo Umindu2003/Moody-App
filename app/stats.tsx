@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LineChart, PieChart } from "react-native-chart-kit";
+import { LineChart } from "react-native-chart-kit";
 import {
   getMoodEntries,
   getMoodInsights,
@@ -45,6 +46,13 @@ export default function Stats() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadMoodData();
+    }, []),
+  );
 
   useEffect(() => {
     filterDataByPeriod();
@@ -427,290 +435,160 @@ export default function Stats() {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#4caf50"
+        />
       }
+      showsVerticalScrollIndicator={false}
     >
       <Animated.View style={{ opacity: fadeAnim }}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Your Mood Statistics</Text>
-
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Statistics</Text>
+            <Text style={styles.subtitle}>Track your mood journey</Text>
+          </View>
           <TouchableOpacity
-            style={styles.exportButton}
+            style={styles.exportIcon}
             onPress={handleExportPDF}
             disabled={exporting || filteredData.length === 0}
           >
             {exporting ? (
-              <ActivityIndicator color="white" size="small" />
+              <ActivityIndicator color="#4caf50" size="small" />
             ) : (
-              <>
-                <Ionicons name="download-outline" size={20} color="white" />
-                <Text style={styles.exportButtonText}>Export</Text>
-              </>
+              <Ionicons name="download-outline" size={24} color="#4caf50" />
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Time Period Selector */}
+        {/* Period Selector */}
         <View style={styles.periodSelector}>
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === "week" && styles.periodButtonActive,
-            ]}
-            onPress={() => setSelectedPeriod("week")}
-          >
-            <Text
+          {["week", "month", "year"].map((period) => (
+            <TouchableOpacity
+              key={period}
               style={[
-                styles.periodText,
-                selectedPeriod === "week" && styles.periodTextActive,
+                styles.periodChip,
+                selectedPeriod === period && styles.periodChipActive,
               ]}
+              onPress={() => setSelectedPeriod(period as TimePeriod)}
             >
-              Week
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === "month" && styles.periodButtonActive,
-            ]}
-            onPress={() => setSelectedPeriod("month")}
-          >
-            <Text
-              style={[
-                styles.periodText,
-                selectedPeriod === "month" && styles.periodTextActive,
-              ]}
-            >
-              Month
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === "year" && styles.periodButtonActive,
-            ]}
-            onPress={() => setSelectedPeriod("year")}
-          >
-            <Text
-              style={[
-                styles.periodText,
-                selectedPeriod === "year" && styles.periodTextActive,
-              ]}
-            >
-              Year
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Insights Cards */}
-        {insights && insights.totalEntries > 0 && (
-          <View style={styles.insightsGrid}>
-            <View style={[styles.insightCard, { backgroundColor: "#e3f2fd" }]}>
-              <Text style={styles.insightValue}>
-                {insights.averageMood.toFixed(1)}
-              </Text>
-              <Text style={styles.insightLabel}>Average Mood</Text>
-              <Text style={styles.insightSubtext}>out of 5.0</Text>
-            </View>
-
-            <View style={[styles.insightCard, { backgroundColor: "#f3e5f5" }]}>
-              <Text style={styles.insightValue}>{insights.currentStreak}</Text>
-              <Text style={styles.insightLabel}>Day Streak</Text>
-              <Text style={styles.insightSubtext}>Keep it up! 🔥</Text>
-            </View>
-
-            <View style={[styles.insightCard, { backgroundColor: "#fff3e0" }]}>
-              <Text style={styles.insightValue}>{insights.totalEntries}</Text>
-              <Text style={styles.insightLabel}>Total Entries</Text>
-              <Text style={styles.insightSubtext}>in this period</Text>
-            </View>
-
-            <View
-              style={[
-                styles.insightCard,
-                { backgroundColor: getTrendColor(insights.moodTrend) + "20" },
-              ]}
-            >
-              <Text style={styles.insightValue}>
-                {getTrendEmoji(insights.moodTrend)}
-              </Text>
-              <Text style={styles.insightLabel}>Mood Trend</Text>
               <Text
                 style={[
-                  styles.insightSubtext,
-                  { color: getTrendColor(insights.moodTrend) },
+                  styles.periodChipText,
+                  selectedPeriod === period && styles.periodChipTextActive,
                 ]}
               >
-                {insights.moodTrend}
+                {period.charAt(0).toUpperCase() + period.slice(1)}
               </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Period Comparison */}
-        <View style={styles.comparisonContainer}>
-          <Text style={styles.sectionTitle}>Period Comparison</Text>
-          <View style={styles.comparisonRow}>
-            <View style={styles.comparisonCard}>
-              <Text style={styles.comparisonLabel}>
-                {comparison.previousLabel}
-              </Text>
-              <Text style={styles.comparisonEmoji}>
-                {comparison.previousMood ? comparison.previousMood.emoji : "😐"}
-              </Text>
-              <Text style={styles.comparisonValue}>
-                {comparison.previousAvg > 0
-                  ? comparison.previousAvg.toFixed(1)
-                  : "No data"}
-              </Text>
-            </View>
-            <View style={styles.comparisonCard}>
-              <Text style={styles.comparisonLabel}>
-                {comparison.currentLabel}
-              </Text>
-              <Text style={styles.comparisonEmoji}>
-                {comparison.currentMood ? comparison.currentMood.emoji : "😐"}
-              </Text>
-              <Text style={styles.comparisonValue}>
-                {comparison.currentAvg > 0
-                  ? comparison.currentAvg.toFixed(1)
-                  : "No data"}
-              </Text>
-            </View>
-          </View>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Mood Distribution Pie Chart */}
-        {filteredData.length > 0 && getMoodDistribution().length > 0 && (
-          <View style={styles.chartContainer}>
-            <Text style={styles.sectionTitle}>Mood Distribution</Text>
-            <PieChart
-              data={getMoodDistribution()}
-              width={screenWidth - 40}
-              height={220}
-              chartConfig={{
-                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              }}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute
-              style={styles.chart}
-            />
-            <View style={styles.legendContainer}>
-              {getMoodDistribution().map((item, index) => (
-                <View key={index} style={styles.legendItem}>
-                  <Text style={styles.legendEmoji}>{item.name}</Text>
-                  <View style={styles.legendInfo}>
-                    <View
-                      style={[
-                        styles.legendDot,
-                        { backgroundColor: item.color },
-                      ]}
-                    />
-                    <Text style={styles.legendText}>
-                      {item.percentage}% ({item.population} entries)
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Mood Trend Chart */}
-        <View style={styles.chartContainer}>
-          <Text style={styles.sectionTitle}>Mood Trend</Text>
-          {filteredData.length > 0 ? (
-            <>
-              <LineChart
-                data={chartData}
-                width={screenWidth - 40}
-                height={220}
-                chartConfig={{
-                  backgroundColor: "#ffffff",
-                  backgroundGradientFrom: "#ffffff",
-                  backgroundGradientTo: "#ffffff",
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  style: {
-                    borderRadius: 16,
-                  },
-                  propsForDots: {
-                    r: "6",
-                    strokeWidth: "2",
-                    stroke: "#4caf50",
-                  },
-                  formatYLabel: (value) => getMoodEmoji(parseFloat(value)),
-                }}
-                bezier
-                style={styles.chart}
-                withInnerLines={false}
-                segments={4}
-              />
-              <View style={styles.chartLegend}>
-                {MOODS.map((mood) => (
-                  <View key={mood.value} style={styles.chartLegendItem}>
-                    <Text style={styles.chartLegendEmoji}>{mood.emoji}</Text>
-                    <Text style={styles.chartLegendText}>{mood.label}</Text>
-                  </View>
-                ))}
+        {/* Key Metrics */}
+        {insights && insights.totalEntries > 0 ? (
+          <>
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>
+                  {getMoodEmoji(insights.averageMood)}
+                </Text>
+                <Text style={styles.metricLabel}>Average</Text>
               </View>
-            </>
-          ) : (
-            <Text style={styles.noDataText}>
-              No mood data yet. Start tracking your mood!
+
+              <View style={styles.metricCard}>
+                <Ionicons name="flame-outline" size={24} color="#ff9800" />
+                <Text style={styles.metricValue}>{insights.currentStreak}</Text>
+                <Text style={styles.metricLabel}>Streak</Text>
+              </View>
+
+              <View style={styles.metricCard}>
+                <Text style={styles.metricEmoji}>
+                  {getTrendEmoji(insights.moodTrend)}
+                </Text>
+                <Text style={styles.metricValue}>{insights.moodTrend}</Text>
+                <Text style={styles.metricLabel}>Trend</Text>
+              </View>
+            </View>
+
+            {/* Mood Trend Chart */}
+            {filteredData.length > 0 && (
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Mood Trend</Text>
+                <LineChart
+                  data={chartData}
+                  width={screenWidth - 40}
+                  height={200}
+                  chartConfig={{
+                    backgroundColor: "#ffffff",
+                    backgroundGradientFrom: "#ffffff",
+                    backgroundGradientTo: "#ffffff",
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+                    labelColor: (opacity = 1) =>
+                      `rgba(0, 0, 0, ${opacity * 0.6})`,
+                    propsForDots: {
+                      r: "5",
+                      strokeWidth: "2",
+                      stroke: "#4caf50",
+                    },
+                    formatYLabel: (value) => {
+                      const numValue = parseFloat(value);
+                      if (numValue === 0) return "";
+                      return getMoodEmoji(numValue);
+                    },
+                  }}
+                  bezier
+                  style={styles.chart}
+                  withInnerLines={false}
+                  withOuterLines={false}
+                  segments={4}
+                />
+              </View>
+            )}
+
+            {/* Mood Distribution */}
+            {getMoodDistribution().length > 0 && (
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Distribution</Text>
+                <View style={styles.distributionGrid}>
+                  {getMoodDistribution().map((item, index) => (
+                    <View key={index} style={styles.distributionItem}>
+                      <View style={styles.distributionBar}>
+                        <View
+                          style={[
+                            styles.distributionFill,
+                            {
+                              width: `${item.percentage}%`,
+                              backgroundColor: item.color,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <View style={styles.distributionInfo}>
+                        <Text style={styles.distributionEmoji}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.distributionPercent}>
+                          {item.percentage}%
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateEmoji}>📊</Text>
+            <Text style={styles.emptyStateText}>No data yet</Text>
+            <Text style={styles.emptyStateSubtext}>
+              Start tracking your mood to see insights
             </Text>
-          )}
-        </View>
-
-        {/* Recent Moods */}
-        <View style={styles.recentContainer}>
-          <Text style={styles.sectionTitle}>
-            Recent Moods in{" "}
-            {selectedPeriod === "today"
-              ? "Today"
-              : selectedPeriod === "week"
-                ? "This Week"
-                : selectedPeriod === "month"
-                  ? "This Month"
-                  : "This Year"}
-          </Text>
-          {filteredData.length > 0 ? (
-            filteredData.slice(0, 10).map((entry, index) => (
-              <View key={entry.id} style={styles.recentItem}>
-                <Text style={styles.recentEmoji}>{entry.emoji}</Text>
-                <View style={styles.recentInfo}>
-                  <Text style={styles.recentMood}>{entry.mood}</Text>
-                  {entry.note && (
-                    <Text style={styles.recentNote} numberOfLines={2}>
-                      "{entry.note}"
-                    </Text>
-                  )}
-                  <Text style={styles.recentDate}>
-                    {entry.timestamp.toDate().toLocaleDateString()} at{" "}
-                    {entry.timestamp.toDate().toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Text>
-                </View>
-              </View>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateEmoji}>📊</Text>
-              <Text style={styles.emptyStateText}>No moods recorded yet</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Start tracking your mood to see statistics!
-              </Text>
-            </View>
-          )}
-        </View>
+          </View>
+        )}
       </Animated.View>
     </ScrollView>
   );
@@ -719,288 +597,181 @@ export default function Stats() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    padding: 20,
+    backgroundColor: "#f8f9fa",
   },
-  titleRow: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 15,
+    padding: 20,
+    paddingTop: 30,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
-    color: "#333",
-    flex: 1,
+    color: "#1a1a1a",
+    marginBottom: 4,
   },
-  exportButton: {
-    flexDirection: "row",
+  subtitle: {
+    fontSize: 15,
+    color: "#666",
+  },
+  exportIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#fff",
     alignItems: "center",
-    backgroundColor: "#4caf50",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    gap: 6,
-  },
-  exportButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   loadingText: {
     textAlign: "center",
     marginTop: 50,
-    fontSize: 18,
-    color: "#666",
+    fontSize: 16,
+    color: "#999",
   },
   periodSelector: {
     flexDirection: "row",
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    gap: 4,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    gap: 10,
   },
-  periodButton: {
+  periodChip: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#fff",
     alignItems: "center",
-    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  periodButtonActive: {
+  periodChipActive: {
     backgroundColor: "#4caf50",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  periodText: {
+  periodChipText: {
     fontSize: 14,
     fontWeight: "600",
     color: "#666",
   },
-  periodTextActive: {
-    color: "white",
+  periodChipTextActive: {
+    color: "#fff",
   },
-  insightsGrid: {
+  metricsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    paddingHorizontal: 20,
     gap: 12,
     marginBottom: 20,
   },
-  insightCard: {
+  metricCard: {
     flex: 1,
-    minWidth: (screenWidth - 60) / 2,
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 15,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
   },
-  insightValue: {
-    fontSize: 32,
+  metricValue: {
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
-    marginBottom: 5,
+    color: "#1a1a1a",
+    marginTop: 8,
+    marginBottom: 4,
   },
-  insightLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 3,
-  },
-  insightSubtext: {
+  metricLabel: {
     fontSize: 12,
     color: "#999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  comparisonContainer: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 15,
+  metricEmoji: {
+    fontSize: 28,
+  },
+  chartCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
     marginBottom: 20,
+    borderRadius: 20,
+    padding: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 15,
-    color: "#333",
-  },
-  comparisonRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  comparisonCard: {
-    alignItems: "center",
-    flex: 1,
-  },
-  comparisonLabel: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 10,
-  },
-  comparisonEmoji: {
-    fontSize: 48,
-    marginBottom: 10,
-  },
-  comparisonValue: {
+  chartTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#4caf50",
-  },
-  chartContainer: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 16,
   },
   chart: {
     marginVertical: 8,
     borderRadius: 16,
   },
-  chartLegend: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    marginTop: 15,
+  distributionGrid: {
+    gap: 16,
+  },
+  distributionItem: {
     gap: 8,
   },
-  chartLegendItem: {
+  distributionBar: {
+    height: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  distributionFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  distributionInfo: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  chartLegendEmoji: {
-    fontSize: 18,
-    marginRight: 5,
-  },
-  chartLegendText: {
-    fontSize: 11,
-    color: "#666",
-  },
-  legendContainer: {
-    marginTop: 15,
-    gap: 8,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  legendEmoji: {
-    fontSize: 28,
-    width: 40,
-  },
-  legendInfo: {
-    flex: 1,
-    flexDirection: "row",
     alignItems: "center",
   },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+  distributionEmoji: {
+    fontSize: 20,
   },
-  legendText: {
+  distributionPercent: {
     fontSize: 14,
-    color: "#666",
-  },
-  noDataText: {
-    textAlign: "center",
-    color: "#999",
-    fontSize: 16,
-    padding: 20,
-  },
-  recentContainer: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  recentItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  recentEmoji: {
-    fontSize: 32,
-    marginRight: 15,
-    marginTop: 4,
-  },
-  recentInfo: {
-    flex: 1,
-  },
-  recentMood: {
-    fontSize: 16,
     fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  recentNote: {
-    fontSize: 14,
     color: "#666",
-    fontStyle: "italic",
-    marginBottom: 6,
-    lineHeight: 20,
-  },
-  recentDate: {
-    fontSize: 13,
-    color: "#999",
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 80,
+    paddingHorizontal: 40,
   },
   emptyStateEmoji: {
-    fontSize: 64,
-    marginBottom: 15,
+    fontSize: 72,
+    marginBottom: 16,
   },
   emptyStateText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
-    color: "#666",
+    color: "#1a1a1a",
     marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
     color: "#999",
     textAlign: "center",
+    lineHeight: 20,
   },
 });
