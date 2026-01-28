@@ -1,3 +1,5 @@
+import { Asset } from "expo-asset";
+import * as FileSystem from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 
@@ -11,7 +13,26 @@ interface ExportData {
 
 export async function generateAndSharePDF(data: ExportData): Promise<void> {
   try {
-    const htmlContent = generateHTMLContent(data);
+    let logoSrc = "";
+
+    try {
+      const logoAsset = Asset.fromModule(require("../assets/images/Moody.png"));
+      await logoAsset.downloadAsync();
+      const logoUri = logoAsset.localUri || logoAsset.uri;
+
+      if (logoUri && FileSystem?.readAsStringAsync) {
+        const base64 = await FileSystem.readAsStringAsync(logoUri, {
+          encoding: "base64",
+        });
+        logoSrc = `data:image/png;base64,${base64}`;
+      } else if (logoUri) {
+        logoSrc = logoUri;
+      }
+    } catch (logoError) {
+      console.warn("Unable to load logo for PDF:", logoError);
+    }
+
+    const htmlContent = generateHTMLContent(data, logoSrc);
     const fileName = `Moody_Report_${data.period}_${new Date().toISOString().split("T")[0]}.pdf`;
 
     // Generate PDF from HTML
@@ -35,7 +56,7 @@ export async function generateAndSharePDF(data: ExportData): Promise<void> {
   }
 }
 
-function generateHTMLContent(data: ExportData): string {
+function generateHTMLContent(data: ExportData, logoSrc: string): string {
   const { period, moodData } = data;
   const currentDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -207,16 +228,11 @@ function generateHTMLContent(data: ExportData): string {
       border-bottom: 3px solid #4caf50;
     }
     
-    .logo {
-      font-size: 36px;
-      margin-bottom: 10px;
-    }
-    
-    .app-name {
-      font-size: 30px;
-      color: #4caf50;
-      margin-bottom: 8px;
-      font-weight: 700;
+    .logo-image {
+      width: 220px;
+      height: auto;
+      margin: 0 auto 10px;
+      display: block;
     }
     
     .subtitle {
@@ -248,9 +264,9 @@ function generateHTMLContent(data: ExportData): string {
       position: relative;
       width: ${chartWidth + padding * 2}px;
       height: ${chartHeight + padding * 2}px;
-      border: 1px solid #e0e0e0;
-      border-radius: 10px;
-      background: white;
+      border: 1px solid #e6e6e6;
+      border-radius: 12px;
+      background: #fcfcfc;
       margin-bottom: 12px;
     }
     
@@ -272,27 +288,38 @@ function generateHTMLContent(data: ExportData): string {
     }
     
     .grid-line {
-      stroke: #f0f0f0;
+      stroke: #eceff1;
       stroke-width: 1;
+      stroke-dasharray: 4 4;
+    }
+
+    .axis-line {
+      stroke: #cfd8dc;
+      stroke-width: 1.5;
     }
     
     .data-line {
       fill: none;
       stroke: #4caf50;
-      stroke-width: 3;
+      stroke-width: 3.5;
       stroke-linecap: round;
       stroke-linejoin: round;
+    }
+
+    .data-area {
+      fill: url(#areaGradient);
+      stroke: none;
     }
     
     .data-point {
       fill: #4caf50;
       stroke: white;
-      stroke-width: 2;
-      r: 6;
+      stroke-width: 2.5;
+      r: 5;
     }
     
     .mood-emoji {
-      font-size: 20px;
+      font-size: 18px;
       text-anchor: middle;
       dominant-baseline: middle;
     }
@@ -347,8 +374,7 @@ function generateHTMLContent(data: ExportData): string {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🌟</div>
-      <h1 class="app-name">Moody</h1>
+      ${logoSrc ? `<img class="logo-image" src="${logoSrc}" alt="Moody Logo" />` : ""}
       <div class="subtitle">${reportTitle} Mood Trend</div>
       <div class="date">Generated on ${currentDate}</div>
     </div>
@@ -358,6 +384,12 @@ function generateHTMLContent(data: ExportData): string {
       
       <div class="chart">
         <svg class="chart-svg" viewBox="0 0 ${chartWidth + padding * 2} ${chartHeight + padding * 2}">
+          <defs>
+            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4caf50" stop-opacity="0.25" />
+              <stop offset="100%" stop-color="#4caf50" stop-opacity="0" />
+            </linearGradient>
+          </defs>
           <!-- Grid lines -->
           ${Array.from({ length: 6 }, (_, i) => {
             const y = padding + (chartHeight / 5) * i;
@@ -368,6 +400,10 @@ function generateHTMLContent(data: ExportData): string {
             const x = padding + (chartWidth / xDivisions) * i;
             return `<line x1="${x}" y1="${padding}" x2="${x}" y2="${chartHeight + padding}" class="grid-line" />`;
           }).join("")}
+
+          <!-- Axis lines -->
+          <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${chartHeight + padding}" class="axis-line" />
+          <line x1="${padding}" y1="${chartHeight + padding}" x2="${chartWidth + padding}" y2="${chartHeight + padding}" class="axis-line" />
           
           <!-- Y-axis labels (moods) -->
           ${moodLabels
@@ -388,6 +424,32 @@ function generateHTMLContent(data: ExportData): string {
             })
             .join("")}
           
+          <!-- Data area -->
+          <polygon
+            points="${dataPoints
+              .map((data, i) => {
+                const x =
+                  padding +
+                  (chartWidth / xDivisions) * i +
+                  chartWidth / (xDivisions * 2);
+                const y =
+                  data.mood > 0
+                    ? padding +
+                      chartHeight -
+                      (chartHeight / 5) * (data.mood - 1)
+                    : padding + chartHeight / 2;
+                return `${x},${y}`;
+              })
+              .join(" ")} ${
+              padding + chartWidth / (xDivisions * 2)
+            },${chartHeight + padding} ${
+              padding +
+              (chartWidth / xDivisions) * (dataPoints.length - 1) +
+              chartWidth / (xDivisions * 2)
+            },${chartHeight + padding}"
+            class="data-area"
+          />
+
           <!-- Data line -->
           <polyline 
             points="${dataPoints
