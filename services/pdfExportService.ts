@@ -1,6 +1,5 @@
-import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
-import { MOODS } from "../types/mood";
+import * as Sharing from "expo-sharing";
 
 interface ExportData {
   period: string;
@@ -44,48 +43,125 @@ function generateHTMLContent(data: ExportData): string {
     day: "numeric",
   });
 
-  // Generate chart data for the week (Monday to Sunday)
-  const dayLabels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const moodEmojis = ["😔", "😕", "😐", "😊", "😄"]; // 1-5 mood scale
-  
-  // Get current week data
+  const moodLabels = ["Very Sad", "Sad", "Neutral", "Happy", "Very Happy"];
   const today = new Date();
-  const weekStart = new Date(today);
-  const dayOfWeek = today.getDay();
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Sunday = 0, Monday = 1
-  weekStart.setDate(today.getDate() + diffToMonday);
-  weekStart.setHours(0, 0, 0, 0);
 
-  // Calculate daily averages for the current week
-  const dailyData = dayLabels.map((day, index) => {
-    const dayDate = new Date(weekStart);
-    dayDate.setDate(weekStart.getDate() + index);
-    
-    const dayEntries = moodData.filter((entry) => {
-      const entryDate = entry.timestamp.toDate();
-      return (
-        entryDate.getDate() === dayDate.getDate() &&
-        entryDate.getMonth() === dayDate.getMonth() &&
-        entryDate.getFullYear() === dayDate.getFullYear()
-      );
+  const buildTrendData = () => {
+    let periods: Date[] = [];
+    let labels: string[] = [];
+
+    if (period === "week") {
+      // Last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        periods.push(date);
+      }
+      const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      labels = periods.map((date) => dayLabels[date.getDay()]);
+    } else if (period === "month") {
+      // Last 30 days grouped by weeks
+      for (let i = 4; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i * 7);
+        date.setHours(0, 0, 0, 0);
+        periods.push(date);
+        labels.push(`Week ${5 - i}`);
+      }
+    } else if (period === "year") {
+      // Last 12 months
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(today);
+        date.setMonth(date.getMonth() - i);
+        date.setDate(1);
+        date.setHours(0, 0, 0, 0);
+        periods.push(date);
+      }
+      const monthLabels = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      labels = periods.map((date) => monthLabels[date.getMonth()]);
+    }
+
+    const dataPoints = periods.map((periodStart, index) => {
+      let periodEntries: any[] = [];
+
+      if (period === "week") {
+        periodEntries = moodData.filter((entry) => {
+          const entryDate = entry.timestamp.toDate();
+          return (
+            entryDate.getDate() === periodStart.getDate() &&
+            entryDate.getMonth() === periodStart.getMonth() &&
+            entryDate.getFullYear() === periodStart.getFullYear()
+          );
+        });
+      } else if (period === "month") {
+        const weekEnd = new Date(periodStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+        periodEntries = moodData.filter((entry) => {
+          const entryDate = entry.timestamp.toDate();
+          return entryDate >= periodStart && entryDate < weekEnd;
+        });
+      } else if (period === "year") {
+        periodEntries = moodData.filter((entry) => {
+          const entryDate = entry.timestamp.toDate();
+          return (
+            entryDate.getMonth() === periodStart.getMonth() &&
+            entryDate.getFullYear() === periodStart.getFullYear()
+          );
+        });
+      }
+
+      const avgMood =
+        periodEntries.length > 0
+          ? periodEntries.reduce((sum, entry) => sum + entry.value, 0) /
+            periodEntries.length
+          : 0;
+
+      const emoji =
+        avgMood > 0
+          ? moodEmojis[Math.min(4, Math.max(0, Math.round(avgMood) - 1))]
+          : "😐";
+
+      return {
+        label: labels[index],
+        mood: avgMood,
+        emoji,
+        entries: periodEntries.length,
+      };
     });
 
-    const avgMood = dayEntries.length > 0 
-      ? dayEntries.reduce((sum, entry) => sum + entry.value, 0) / dayEntries.length
-      : 0;
+    return { labels, dataPoints };
+  };
 
-    return {
-      day,
-      mood: avgMood,
-      emoji: avgMood > 0 ? moodEmojis[Math.round(avgMood) - 1] : "😐",
-      entries: dayEntries.length
-    };
-  });
+  const { labels, dataPoints } = buildTrendData();
 
-  const maxMood = 5;
-  const chartHeight = 300;
-  const chartWidth = 600;
-  const padding = 80;
+  const chartHeight = 240;
+  const chartWidth = 520;
+  const padding = 60;
+  const xDivisions = Math.max(1, labels.length);
+
+  const reportTitle =
+    period === "week" ? "Weekly" : period === "month" ? "Monthly" : "Yearly";
+  const chartTitle =
+    period === "week"
+      ? "Your Mood This Week"
+      : period === "month"
+        ? "Your Mood This Month"
+        : "Your Mood This Year";
 
   return `
 <!DOCTYPE html>
@@ -93,7 +169,7 @@ function generateHTMLContent(data: ExportData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Moody - Weekly Mood Chart</title>
+  <title>Moody - ${reportTitle} Mood Chart</title>
   <style>
     * {
       margin: 0;
@@ -101,11 +177,16 @@ function generateHTMLContent(data: ExportData): string {
       box-sizing: border-box;
     }
     
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       line-height: 1.6;
       color: #333;
-      padding: 30px;
+      padding: 16px;
       background: #f8f9fa;
     }
     
@@ -113,32 +194,33 @@ function generateHTMLContent(data: ExportData): string {
       max-width: 800px;
       margin: 0 auto;
       background: white;
-      padding: 40px;
+      padding: 24px;
       border-radius: 20px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      page-break-inside: avoid;
     }
     
     .header {
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 24px;
       padding-bottom: 20px;
       border-bottom: 3px solid #4caf50;
     }
     
     .logo {
-      font-size: 48px;
+      font-size: 36px;
       margin-bottom: 10px;
     }
     
     .app-name {
-      font-size: 36px;
+      font-size: 30px;
       color: #4caf50;
       margin-bottom: 8px;
       font-weight: 700;
     }
     
     .subtitle {
-      font-size: 18px;
+      font-size: 16px;
       color: #666;
       margin-bottom: 5px;
     }
@@ -152,14 +234,14 @@ function generateHTMLContent(data: ExportData): string {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 40px 0;
+      margin: 24px 0;
     }
     
     .chart-title {
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 600;
       color: #333;
-      margin-bottom: 30px;
+      margin-bottom: 16px;
     }
     
     .chart {
@@ -169,7 +251,7 @@ function generateHTMLContent(data: ExportData): string {
       border: 1px solid #e0e0e0;
       border-radius: 10px;
       background: white;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
     
     .chart-svg {
@@ -219,9 +301,9 @@ function generateHTMLContent(data: ExportData): string {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 30px;
-      margin-top: 20px;
-      padding: 15px;
+      gap: 16px;
+      margin-top: 12px;
+      padding: 10px;
       background: #f8f9fa;
       border-radius: 10px;
     }
@@ -233,21 +315,21 @@ function generateHTMLContent(data: ExportData): string {
     }
     
     .legend-emoji {
-      font-size: 24px;
+      font-size: 20px;
     }
     
     .legend-text {
-      font-size: 12px;
+      font-size: 11px;
       color: #666;
     }
     
     .footer {
       text-align: center;
-      margin-top: 40px;
+      margin-top: 20px;
       padding-top: 20px;
       border-top: 2px solid #e0e0e0;
       color: #999;
-      font-size: 14px;
+      font-size: 12px;
     }
     
     @media print {
@@ -267,12 +349,12 @@ function generateHTMLContent(data: ExportData): string {
     <div class="header">
       <div class="logo">🌟</div>
       <h1 class="app-name">Moody</h1>
-      <div class="subtitle">Weekly Mood Trend</div>
+      <div class="subtitle">${reportTitle} Mood Trend</div>
       <div class="date">Generated on ${currentDate}</div>
     </div>
     
     <div class="chart-container">
-      <h2 class="chart-title">Your Mood This Week</h2>
+      <h2 class="chart-title">${chartTitle}</h2>
       
       <div class="chart">
         <svg class="chart-svg" viewBox="0 0 ${chartWidth + padding * 2} ${chartHeight + padding * 2}">
@@ -280,65 +362,99 @@ function generateHTMLContent(data: ExportData): string {
           ${Array.from({ length: 6 }, (_, i) => {
             const y = padding + (chartHeight / 5) * i;
             return `<line x1="${padding}" y1="${y}" x2="${chartWidth + padding}" y2="${y}" class="grid-line" />`;
-          }).join('')}
+          }).join("")}
           
-          ${Array.from({ length: 8 }, (_, i) => {
-            const x = padding + (chartWidth / 7) * i;
+          ${Array.from({ length: labels.length + 1 }, (_, i) => {
+            const x = padding + (chartWidth / xDivisions) * i;
             return `<line x1="${x}" y1="${padding}" x2="${x}" y2="${chartHeight + padding}" class="grid-line" />`;
-          }).join('')}
+          }).join("")}
           
           <!-- Y-axis labels (moods) -->
-          ${moodEmojis.map((emoji, i) => {
-            const y = padding + chartHeight - (chartHeight / 5) * i;
-            return `<text x="${padding - 20}" y="${y}" class="axis-label-y">${emoji}</text>`;
-          }).join('')}
+          ${moodLabels
+            .map((label, i) => {
+              const y = padding + chartHeight - (chartHeight / 5) * i;
+              return `<text x="${padding - 30}" y="${y}" class="axis-label-y">${label}</text>`;
+            })
+            .join("")}
           
           <!-- X-axis labels (days) -->
-          ${dayLabels.map((day, i) => {
-            const x = padding + (chartWidth / 7) * i + (chartWidth / 14);
-            return `<text x="${x}" y="${chartHeight + padding + 25}" class="axis-label-x">${day.substr(0, 3)}</text>`;
-          }).join('')}
+          ${labels
+            .map((label, i) => {
+              const x =
+                padding +
+                (chartWidth / xDivisions) * i +
+                chartWidth / (xDivisions * 2);
+              return `<text x="${x}" y="${chartHeight + padding + 25}" class="axis-label-x">${label}</text>`;
+            })
+            .join("")}
           
           <!-- Data line -->
           <polyline 
-            points="${dailyData.map((data, i) => {
-              const x = padding + (chartWidth / 7) * i + (chartWidth / 14);
-              const y = data.mood > 0 ? 
-                padding + chartHeight - (chartHeight / 5) * (data.mood - 1) :
-                padding + chartHeight / 2;
-              return `${x},${y}`;
-            }).join(' ')}"
+            points="${dataPoints
+              .map((data, i) => {
+                const x =
+                  padding +
+                  (chartWidth / xDivisions) * i +
+                  chartWidth / (xDivisions * 2);
+                const y =
+                  data.mood > 0
+                    ? padding +
+                      chartHeight -
+                      (chartHeight / 5) * (data.mood - 1)
+                    : padding + chartHeight / 2;
+                return `${x},${y}`;
+              })
+              .join(" ")}"
             class="data-line"
           />
           
           <!-- Data points -->
-          ${dailyData.map((data, i) => {
-            const x = padding + (chartWidth / 7) * i + (chartWidth / 14);
-            const y = data.mood > 0 ? 
-              padding + chartHeight - (chartHeight / 5) * (data.mood - 1) :
-              padding + chartHeight / 2;
-            return `<circle cx="${x}" cy="${y}" class="data-point" />`;
-          }).join('')}
+          ${dataPoints
+            .map((data, i) => {
+              const x =
+                padding +
+                (chartWidth / xDivisions) * i +
+                chartWidth / (xDivisions * 2);
+              const y =
+                data.mood > 0
+                  ? padding + chartHeight - (chartHeight / 5) * (data.mood - 1)
+                  : padding + chartHeight / 2;
+              return `<circle cx="${x}" cy="${y}" class="data-point" />`;
+            })
+            .join("")}
           
           <!-- Mood emojis at data points -->
-          ${dailyData.map((data, i) => {
-            const x = padding + (chartWidth / 7) * i + (chartWidth / 14);
-            const y = data.mood > 0 ? 
-              padding + chartHeight - (chartHeight / 5) * (data.mood - 1) - 25 :
-              padding + chartHeight / 2 - 25;
-            return `<text x="${x}" y="${y}" class="mood-emoji">${data.emoji}</text>`;
-          }).join('')}
+          ${dataPoints
+            .map((data, i) => {
+              const x =
+                padding +
+                (chartWidth / xDivisions) * i +
+                chartWidth / (xDivisions * 2);
+              const y =
+                data.mood > 0
+                  ? padding +
+                    chartHeight -
+                    (chartHeight / 5) * (data.mood - 1) -
+                    25
+                  : padding + chartHeight / 2 - 25;
+              return `<text x="${x}" y="${y}" class="mood-emoji">${data.emoji}</text>`;
+            })
+            .join("")}
         </svg>
       </div>
       
       <!-- Legend -->
       <div class="legend">
-        ${moodEmojis.map((emoji, i) => `
+        ${moodEmojis
+          .map(
+            (emoji, i) => `
           <div class="legend-item">
             <span class="legend-emoji">${emoji}</span>
-            <span class="legend-text">${i === 0 ? 'Very Sad' : i === 1 ? 'Sad' : i === 2 ? 'Neutral' : i === 3 ? 'Happy' : 'Very Happy'}</span>
+            <span class="legend-text">${i === 0 ? "Very Sad" : i === 1 ? "Sad" : i === 2 ? "Neutral" : i === 3 ? "Happy" : "Very Happy"}</span>
           </div>
-        `).join('')}
+        `,
+          )
+          .join("")}
       </div>
     </div>
     

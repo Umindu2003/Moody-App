@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { getTodaysMood, getUserId, saveMood } from "../services/moodService";
 import { MOODS } from "../types/mood";
@@ -125,11 +125,6 @@ export default function Index() {
     }
   };
 
-  const handleUpdateMood = () => {
-    // Allow updating existing mood
-    setShowNoteInput(true);
-  };
-
   if (initialLoading) {
     return (
       <View style={styles.container}>
@@ -165,12 +160,6 @@ export default function Index() {
               {todaysMood.note && (
                 <Text style={styles.todayNoteText}>"{todaysMood.note}"</Text>
               )}
-              <TouchableOpacity
-                style={styles.updateButton}
-                onPress={handleUpdateMood}
-              >
-                <Text style={styles.updateButtonText}>Update Mood</Text>
-              </TouchableOpacity>
             </View>
           )}
 
@@ -293,19 +282,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 8,
     textAlign: "center",
-  },
-  updateButton: {
-    marginTop: 12,
-    backgroundColor: "#4caf50",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignSelf: "center",
-  },
-  updateButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
   },
   moodsContainer: {
     flexDirection: "column",

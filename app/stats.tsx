@@ -516,35 +516,95 @@ export default function Stats() {
             {filteredData.length > 0 && (
               <View style={styles.chartCard}>
                 <Text style={styles.chartTitle}>Mood Trend</Text>
-                <LineChart
-                  data={chartData}
-                  width={screenWidth - 40}
-                  height={200}
-                  chartConfig={{
-                    backgroundColor: "#ffffff",
-                    backgroundGradientFrom: "#ffffff",
-                    backgroundGradientTo: "#ffffff",
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-                    labelColor: (opacity = 1) =>
-                      `rgba(0, 0, 0, ${opacity * 0.6})`,
-                    propsForDots: {
-                      r: "5",
-                      strokeWidth: "2",
-                      stroke: "#4caf50",
-                    },
-                    formatYLabel: (value) => {
+                <View style={styles.chartWrapper}>
+                  <LineChart
+                    data={chartData}
+                    width={screenWidth - 80}
+                    height={200}
+                    chartConfig={{
+                      backgroundColor: "#ffffff",
+                      backgroundGradientFrom: "#ffffff",
+                      backgroundGradientTo: "#ffffff",
+                      decimalPlaces: 0,
+                      color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+                      labelColor: (opacity = 1) =>
+                        `rgba(0, 0, 0, ${opacity * 0.6})`,
+                      propsForDots: {
+                        r: "5",
+                        strokeWidth: "2",
+                        stroke: "#4caf50",
+                      },
+                    }}
+                    bezier
+                    style={styles.chart}
+                    withInnerLines={false}
+                    withOuterLines={false}
+                    segments={4}
+                    yAxisLabel=""
+                    yAxisSuffix=""
+                    formatYLabel={(value) => {
                       const numValue = parseFloat(value);
-                      if (numValue === 0) return "";
-                      return getMoodEmoji(numValue);
-                    },
-                  }}
-                  bezier
-                  style={styles.chart}
-                  withInnerLines={false}
-                  withOuterLines={false}
-                  segments={4}
-                />
+                      if (numValue <= 1) return "😢";
+                      if (numValue <= 2) return "😔";
+                      if (numValue <= 3) return "😐";
+                      if (numValue <= 4) return "😊";
+                      return "😄";
+                    }}
+                    fromZero
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Period Comparison */}
+            {filteredData.length > 0 && comparison.previousAvg > 0 && (
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Period Comparison</Text>
+                <View style={styles.comparisonContainer}>
+                  <View style={styles.comparisonItem}>
+                    <Text style={styles.comparisonLabel}>
+                      {comparison.currentLabel}
+                    </Text>
+                    <Text style={styles.comparisonEmoji}>
+                      {getMoodEmoji(comparison.currentAvg)}
+                    </Text>
+                    <Text style={styles.comparisonValue}>
+                      {comparison.currentAvg.toFixed(1)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.comparisonDivider}>
+                    <Ionicons
+                      name={
+                        comparison.currentAvg > comparison.previousAvg
+                          ? "trending-up"
+                          : comparison.currentAvg < comparison.previousAvg
+                            ? "trending-down"
+                            : "remove"
+                      }
+                      size={32}
+                      color={
+                        comparison.currentAvg > comparison.previousAvg
+                          ? "#4caf50"
+                          : comparison.currentAvg < comparison.previousAvg
+                            ? "#f44336"
+                            : "#ffc107"
+                      }
+                    />
+                  </View>
+
+                  <View style={styles.comparisonItem}>
+                    <Text style={styles.comparisonLabel}>
+                      {comparison.previousLabel}
+                    </Text>
+                    <Text style={styles.comparisonEmoji}>
+                      {getMoodEmoji(comparison.previousAvg)}
+                    </Text>
+                    <Text style={styles.comparisonValue}>
+                      {comparison.previousAvg.toFixed(1)}
+                    </Text>
+                  </View>
+                </View>
               </View>
             )}
 
@@ -720,9 +780,41 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     marginBottom: 16,
   },
+  chartWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   chart: {
     marginVertical: 8,
     borderRadius: 16,
+  },
+  comparisonContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingVertical: 10,
+  },
+  comparisonItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 8,
+  },
+  comparisonLabel: {
+    fontSize: 12,
+    color: "#999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  comparisonEmoji: {
+    fontSize: 48,
+  },
+  comparisonValue: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1a1a1a",
+  },
+  comparisonDivider: {
+    paddingHorizontal: 20,
   },
   distributionGrid: {
     gap: 16,
