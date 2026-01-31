@@ -30,13 +30,17 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/Moody.png",
-          "imageWidth": 200,
+          "image": "./assets/images/MoodyLogo.png",
+          "imageWidth": 100,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#f0fdf4"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/MoodyLogo.png",
+          "color": "#4caf50"
         }
       ],
       "expo-print"

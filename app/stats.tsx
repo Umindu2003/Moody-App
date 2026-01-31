@@ -13,7 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LineChart } from "react-native-chart-kit";
+import { LineChart, PieChart } from "react-native-chart-kit";
+import LoadingScreen from "../components/LoadingScreen";
 import {
   getMoodEntries,
   getMoodInsights,
@@ -268,7 +269,7 @@ export default function Stats() {
   };
 
   const getMoodEmoji = (value: number) => {
-    if (value === 0) return "😐";
+    if (value === 0) return "😌";
     const mood = MOODS.find((m) => {
       if (value >= 4.5) return m.value === 5;
       if (value >= 3.5) return m.value === 4;
@@ -276,7 +277,7 @@ export default function Stats() {
       if (value >= 1.5) return m.value === 2;
       return m.value === 1;
     });
-    return mood?.emoji || "😐";
+    return mood?.emoji || "😌";
   };
 
   const getPeriodComparison = () => {
@@ -399,11 +400,7 @@ export default function Stats() {
   };
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>Loading stats...</Text>
-      </View>
-    );
+    return <LoadingScreen message="Analyzing your mood data..." />;
   }
 
   const chartData = getChartData();
@@ -491,8 +488,11 @@ export default function Stats() {
           <>
             <View style={styles.metricsRow}>
               <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>
+                <Text style={styles.metricEmoji}>
                   {getMoodEmoji(insights.averageMood)}
+                </Text>
+                <Text style={styles.metricValue}>
+                  {insights.averageMood.toFixed(1)}
                 </Text>
                 <Text style={styles.metricLabel}>Average</Text>
               </View>
@@ -504,9 +504,17 @@ export default function Stats() {
               </View>
 
               <View style={styles.metricCard}>
-                <Text style={styles.metricEmoji}>
-                  {getTrendEmoji(insights.moodTrend)}
-                </Text>
+                <Ionicons
+                  name={
+                    insights.moodTrend === "improving"
+                      ? "trending-up"
+                      : insights.moodTrend === "declining"
+                        ? "trending-down"
+                        : "stats-chart"
+                  }
+                  size={24}
+                  color={getTrendColor(insights.moodTrend)}
+                />
                 <Text style={styles.metricValue}>{insights.moodTrend}</Text>
                 <Text style={styles.metricLabel}>Trend</Text>
               </View>
@@ -519,36 +527,47 @@ export default function Stats() {
                 <View style={styles.chartWrapper}>
                   <LineChart
                     data={chartData}
-                    width={screenWidth - 80}
-                    height={200}
+                    width={screenWidth - 60}
+                    height={220}
                     chartConfig={{
-                      backgroundColor: "#ffffff",
+                      backgroundColor: "#f8f9fa",
                       backgroundGradientFrom: "#ffffff",
-                      backgroundGradientTo: "#ffffff",
+                      backgroundGradientTo: "#f8f9fa",
                       decimalPlaces: 0,
                       color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
                       labelColor: (opacity = 1) =>
-                        `rgba(0, 0, 0, ${opacity * 0.6})`,
+                        `rgba(0, 0, 0, ${opacity * 0.7})`,
                       propsForDots: {
-                        r: "5",
-                        strokeWidth: "2",
+                        r: "6",
+                        strokeWidth: "3",
                         stroke: "#4caf50",
+                        fill: "#ffffff",
+                      },
+                      strokeWidth: 3,
+                      propsForBackgroundLines: {
+                        strokeDasharray: "",
+                        stroke: "#e0e0e0",
+                        strokeWidth: 1,
+                      },
+                      propsForLabels: {
+                        fontSize: 9,
                       },
                     }}
                     bezier
                     style={styles.chart}
-                    withInnerLines={false}
-                    withOuterLines={false}
+                    withInnerLines={true}
+                    withOuterLines={true}
+                    withShadow={true}
                     segments={4}
                     yAxisLabel=""
                     yAxisSuffix=""
                     formatYLabel={(value) => {
                       const numValue = parseFloat(value);
-                      if (numValue <= 1) return "😢";
-                      if (numValue <= 2) return "😔";
-                      if (numValue <= 3) return "😐";
-                      if (numValue <= 4) return "😊";
-                      return "😄";
+                      if (numValue <= 1) return "😢 V.Sad";
+                      if (numValue <= 2) return "🥺 Sad";
+                      if (numValue <= 3) return "😌 Neutral";
+                      if (numValue <= 4) return "🥰 Happy";
+                      return "🤩 V.Happy";
                     }}
                     fromZero
                   />
@@ -611,31 +630,20 @@ export default function Stats() {
             {/* Mood Distribution */}
             {getMoodDistribution().length > 0 && (
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Distribution</Text>
-                <View style={styles.distributionGrid}>
-                  {getMoodDistribution().map((item, index) => (
-                    <View key={index} style={styles.distributionItem}>
-                      <View style={styles.distributionBar}>
-                        <View
-                          style={[
-                            styles.distributionFill,
-                            {
-                              width: `${item.percentage}%`,
-                              backgroundColor: item.color,
-                            },
-                          ]}
-                        />
-                      </View>
-                      <View style={styles.distributionInfo}>
-                        <Text style={styles.distributionEmoji}>
-                          {item.name}
-                        </Text>
-                        <Text style={styles.distributionPercent}>
-                          {item.percentage}%
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
+                <Text style={styles.chartTitle}>Mood Distribution</Text>
+                <View style={styles.chartWrapper}>
+                  <PieChart
+                    data={getMoodDistribution()}
+                    width={screenWidth - 60}
+                    height={220}
+                    chartConfig={{
+                      color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    }}
+                    accessor="percentage"
+                    backgroundColor="transparent"
+                    paddingLeft="5"
+                    center={[5, 0]}
+                  />
                 </View>
               </View>
             )}
@@ -688,12 +696,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-  },
-  loadingText: {
-    textAlign: "center",
-    marginTop: 50,
-    fontSize: 16,
-    color: "#999",
   },
   periodSelector: {
     flexDirection: "row",
@@ -761,6 +763,14 @@ const styles = StyleSheet.create({
   },
   metricEmoji: {
     fontSize: 28,
+  },
+  trendIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 5,
   },
   chartCard: {
     backgroundColor: "#fff",

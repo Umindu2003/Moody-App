@@ -19,6 +19,24 @@ mongoose
   .then(() => console.log("Connected to MongoDB successfully"))
   .catch((error) => console.error("MongoDB connection error:", error));
 
+// User Schema
+const UserSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 30,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+const User = mongoose.model("User", UserSchema);
+
 // Mood Entry Schema
 const MoodEntrySchema = new mongoose.Schema(
   {
@@ -61,7 +79,92 @@ MoodEntrySchema.index({ userId: 1, timestamp: 1 });
 
 const MoodEntry = mongoose.model("MoodEntry", MoodEntrySchema);
 
-// Routes
+// ============ USER ROUTES ============
+
+// Register a new user
+app.post("/api/users/register", async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || name.trim().length < 2) {
+      return res
+        .status(400)
+        .json({ error: "Name must be at least 2 characters" });
+    }
+
+    const newUser = new User({
+      name: name.trim(),
+    });
+
+    await newUser.save();
+
+    res.status(201).json({
+      id: newUser._id.toString(),
+      name: newUser.name,
+      createdAt: newUser.createdAt,
+    });
+  } catch (error) {
+    console.error("Error registering user:", error);
+    res.status(500).json({ error: "Failed to register user" });
+  }
+});
+
+// Get user profile
+app.get("/api/users/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      id: user._id.toString(),
+      name: user.name,
+      createdAt: user.createdAt,
+    });
+  } catch (error) {
+    console.error("Error getting user:", error);
+    res.status(500).json({ error: "Failed to get user" });
+  }
+});
+
+// Update user profile
+app.put("/api/users/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name } = req.body;
+
+    if (!name || name.trim().length < 2) {
+      return res
+        .status(400)
+        .json({ error: "Name must be at least 2 characters" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { name: name.trim() },
+      { new: true },
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      id: user._id.toString(),
+      name: user.name,
+      createdAt: user.createdAt,
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
+// ============ MOOD ROUTES ============
 
 // Save or update mood entry
 app.post("/api/moods", async (req, res) => {

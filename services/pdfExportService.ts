@@ -64,7 +64,7 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
     day: "numeric",
   });
 
-  const moodEmojis = ["😔", "😕", "😐", "😊", "😄"]; // 1-5 mood scale
+  const moodEmojis = ["😢", "🥺", "😌", "🥰", "🤩"]; // 1-5 mood scale
   const moodLabels = ["Very Sad", "Sad", "Neutral", "Happy", "Very Happy"];
   const today = new Date();
 
@@ -155,7 +155,7 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
       const emoji =
         avgMood > 0
           ? moodEmojis[Math.min(4, Math.max(0, Math.round(avgMood) - 1))]
-          : "😐";
+          : "😌";
 
       return {
         label: labels[index],

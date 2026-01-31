@@ -23,13 +23,15 @@ console.log(
   `[Moody API] Using API base URL: ${API_BASE_URL} (Platform: ${Platform.OS})`,
 );
 
-// Generate or retrieve a unique user ID
+// Get user ID from storage (created during onboarding)
 export async function getUserId(): Promise<string> {
   try {
-    let userId = await AsyncStorage.getItem(USER_ID_KEY);
+    const userId = await AsyncStorage.getItem(USER_ID_KEY);
     if (!userId) {
-      userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      await AsyncStorage.setItem(USER_ID_KEY, userId);
+      // Fallback for backward compatibility
+      const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await AsyncStorage.setItem(USER_ID_KEY, newUserId);
+      return newUserId;
     }
     return userId;
   } catch (error) {

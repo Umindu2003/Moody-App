@@ -12,7 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import LoadingScreen from "../components/LoadingScreen";
 import { getTodaysMood, getUserId, saveMood } from "../services/moodService";
+import { getGreeting, getSubtitle, getUserName } from "../services/userService";
 import { MOODS } from "../types/mood";
 
 export default function Index() {
@@ -24,8 +26,12 @@ export default function Index() {
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
+  const [userName, setUserName] = useState<string>("");
+  const [greeting, setGreeting] = useState<string>("");
+  const [subtitle, setSubtitle] = useState<string>("");
 
   useEffect(() => {
+    loadUserData();
     loadTodaysMood();
 
     // Entrance animation
@@ -43,6 +49,19 @@ export default function Index() {
       }),
     ]).start();
   }, []);
+
+  const loadUserData = async () => {
+    try {
+      const name = await getUserName();
+      if (name) {
+        setUserName(name);
+        setGreeting(getGreeting(name));
+        setSubtitle(getSubtitle());
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
 
   const loadTodaysMood = async () => {
     try {
@@ -126,11 +145,7 @@ export default function Index() {
   };
 
   if (initialLoading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
+    return <LoadingScreen message="Getting your mood data..." />;
   }
 
   return (
@@ -150,7 +165,11 @@ export default function Index() {
             { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
           ]}
         >
-          <Text style={styles.title}>How are you feeling today?</Text>
+          {/* Personalized Greeting */}
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greeting}>{greeting}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          </View>
 
           {todaysMood && (
             <View style={styles.todayMoodContainer}>
@@ -241,23 +260,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 20,
   },
   content: {
     flex: 1,
   },
-  loadingText: {
-    textAlign: "center",
-    fontSize: 18,
-    color: "#666",
-    marginTop: 50,
+  greetingContainer: {
+    marginBottom: 25,
+    paddingHorizontal: 5,
   },
-  title: {
-    fontSize: 28,
+  greeting: {
+    fontSize: 26,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 20,
-    color: "#333",
+    color: "#2e7d32",
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
   },
   todayMoodContainer: {
     backgroundColor: "#e3f2fd",

@@ -1,14 +1,15 @@
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Animated,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
+import LoadingScreen from "../components/LoadingScreen";
 import { getAllMoodEntries, getUserId } from "../services/moodService";
 import { MOODS } from "../types/mood";
 
@@ -109,11 +110,7 @@ export default function History() {
   };
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>Loading history...</Text>
-      </View>
-    );
+    return <LoadingScreen message="Loading your mood history..." />;
   }
 
   return (
@@ -195,12 +192,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 10,
     color: "#333",
-  },
-  loadingText: {
-    textAlign: "center",
-    marginTop: 50,
-    fontSize: 18,
-    color: "#666",
   },
   filterContainer: {
     flexDirection: "row",
