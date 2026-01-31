@@ -523,7 +523,10 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
     <div class="footer">
       <div style="font-size: 18px; font-weight: 600; color: #4caf50; margin-bottom: 8px;">Moody</div>
       <div>Track your emotions, understand yourself better</div>
-      <div style="margin-top: 8px;">© ${new Date().getFullYear()} Moody. All rights reserved.</div>
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+        <div style="font-size: 11px; color: #888;">Developed by <strong style="color: #666;">Umindu Isith</strong></div>
+      </div>
+      <div style="margin-top: 8px; font-size: 10px;">© ${new Date().getFullYear()} Moody. All rights reserved.</div>
     </div>
   </div>
 </body>

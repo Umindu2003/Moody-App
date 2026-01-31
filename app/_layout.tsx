@@ -89,6 +89,7 @@ export default function RootLayout() {
         options={{
           title: "Track Mood",
           tabBarLabel: "Track",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="happy-outline" size={size} color={color} />
           ),
@@ -99,6 +100,7 @@ export default function RootLayout() {
         options={{
           title: "Statistics",
           tabBarLabel: "Stats",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="stats-chart-outline" size={size} color={color} />
           ),
@@ -109,6 +111,7 @@ export default function RootLayout() {
         options={{
           title: "Mood History",
           tabBarLabel: "History",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" size={size} color={color} />
           ),
@@ -119,6 +122,7 @@ export default function RootLayout() {
         options={{
           title: "Settings",
           tabBarLabel: "Settings",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),

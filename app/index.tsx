@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Animated,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -31,7 +35,6 @@ export default function Index() {
   const [subtitle, setSubtitle] = useState<string>("");
 
   useEffect(() => {
-    loadUserData();
     loadTodaysMood();
 
     // Entrance animation
@@ -49,6 +52,13 @@ export default function Index() {
       }),
     ]).start();
   }, []);
+
+  // Reload user data when tab comes into focus (for real-time name updates)
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+    }, []),
+  );
 
   const loadUserData = async () => {
     try {
@@ -152,101 +162,118 @@ export default function Index() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={100}
+      keyboardVerticalOffset={60}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View
-          style={[
-            styles.content,
-            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-          ]}
+      {/* Header with Gradient - Fixed at top */}
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={["#4caf50", "#66bb6a"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
         >
-          {/* Personalized Greeting */}
-          <View style={styles.greetingContainer}>
-            <Text style={styles.greeting}>{greeting}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>{greeting}</Text>
+            <Text style={styles.headerSubtitle}>{subtitle}</Text>
           </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="happy" size={32} color="rgba(255,255,255,0.3)" />
+          </View>
+        </LinearGradient>
+      </View>
 
-          {todaysMood && (
-            <View style={styles.todayMoodContainer}>
-              <Text style={styles.todayMoodText}>
-                Today's mood: {todaysMood.emoji} {todaysMood.mood}
-              </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Today's Mood Card - Centered & Beautiful */}
+        {todaysMood && (
+          <View style={styles.todayMoodContainer}>
+            <LinearGradient
+              colors={["#e8f5e9", "#f1f8e9"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.todayMoodGradient}
+            >
+              <Text style={styles.todayMoodLabel}>✨ Today's Mood</Text>
+              <Text style={styles.todayMoodEmoji}>{todaysMood.emoji}</Text>
+              <Text style={styles.todayMoodText}>{todaysMood.mood}</Text>
               {todaysMood.note && (
                 <Text style={styles.todayNoteText}>"{todaysMood.note}"</Text>
               )}
-            </View>
-          )}
-
-          <View style={styles.moodsContainer}>
-            {MOODS.map((mood) => (
-              <TouchableOpacity
-                key={mood.value}
-                style={[
-                  styles.moodButton,
-                  selectedMood === mood.emoji && styles.selectedMood,
-                ]}
-                onPress={() => handleMoodSelect(mood)}
-                disabled={loading}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[
-                    styles.moodColorIndicator,
-                    { backgroundColor: mood.color },
-                  ]}
-                />
-                <Text style={styles.emoji}>{mood.emoji}</Text>
-                <View style={styles.moodTextContainer}>
-                  <Text style={styles.moodLabel}>{mood.label}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            </LinearGradient>
           </View>
+        )}
 
-          {showNoteInput && (
-            <Animated.View style={styles.noteContainer}>
-              <Text style={styles.noteLabel}>Add a note (optional):</Text>
-              <TextInput
-                style={styles.noteInput}
-                placeholder="How was your day? What made you feel this way?"
-                value={note}
-                onChangeText={setNote}
-                multiline
-                numberOfLines={3}
-                maxLength={200}
-              />
-              <Text style={styles.characterCount}>{note.length}/200</Text>
+        {/* Mood Selection */}
+        <Text style={styles.sectionTitle}>How are you feeling?</Text>
+        <View style={styles.moodsContainer}>
+          {MOODS.map((mood) => (
+            <TouchableOpacity
+              key={mood.value}
+              style={[
+                styles.moodButton,
+                selectedMood === mood.emoji && styles.selectedMood,
+                { borderLeftColor: mood.color, borderLeftWidth: 5 },
+              ]}
+              onPress={() => handleMoodSelect(mood)}
+              disabled={loading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.emoji}>{mood.emoji}</Text>
+              <Text style={styles.moodLabel}>{mood.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowNoteInput(false);
-                    setNote("");
-                    setSelectedMood(todaysMood?.emoji || null);
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
+        {/* Note Input */}
+        {showNoteInput && (
+          <View style={styles.noteContainer}>
+            <Text style={styles.noteLabel}>Add a note (optional)</Text>
+            <TextInput
+              style={styles.noteInput}
+              placeholder="How's your day going?"
+              value={note}
+              onChangeText={setNote}
+              multiline
+              maxLength={150}
+              placeholderTextColor="#aaa"
+            />
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowNoteInput(false);
+                  setNote("");
+                  setSelectedMood(todaysMood?.emoji || null);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSaveMood}
+                disabled={loading}
+              >
+                <Text style={styles.saveButtonText}>
+                  {loading ? "Saving..." : "Save Mood"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={handleSaveMood}
-                  disabled={loading}
-                >
-                  <Text style={styles.saveButtonText}>
-                    {loading ? "Saving..." : "Save Mood"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          )}
-        </Animated.View>
+        {/* Developer Credit */}
+        <View style={styles.developerCredit}>
+          <Image
+            source={require("../assets/images/MainLogo.png")}
+            style={styles.developerLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.developerText}>Developed by Umindu Isith</Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -255,160 +282,201 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f9fa",
   },
-  scrollContent: {
-    flexGrow: 1,
+  headerContainer: {
+    marginHorizontal: 20,
+    marginTop: 50,
+    marginBottom: 15,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#4caf50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  headerGradient: {
     padding: 20,
-    paddingTop: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  content: {
+  headerContent: {
     flex: 1,
   },
-  greetingContainer: {
-    marginBottom: 25,
-    paddingHorizontal: 5,
+  headerIcon: {
+    opacity: 0.5,
   },
-  greeting: {
-    fontSize: 26,
+  headerTitle: {
+    fontSize: 28,
     fontWeight: "bold",
-    color: "#2e7d32",
-    marginBottom: 5,
+    color: "white",
+    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
+  headerSubtitle: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.8)",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 12,
+    marginTop: 5,
   },
   todayMoodContainer: {
-    backgroundColor: "#e3f2fd",
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 18,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#4caf50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  todayMoodGradient: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  todayMoodEmoji: {
+    fontSize: 50,
+    marginVertical: 8,
+  },
+  todayMoodLabel: {
+    fontSize: 12,
+    color: "#4caf50",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    fontWeight: "700",
   },
   todayMoodText: {
-    fontSize: 18,
-    color: "#1976d2",
-    fontWeight: "600",
-    textAlign: "center",
+    fontSize: 20,
+    color: "#2e7d32",
+    fontWeight: "800",
+    marginTop: 4,
   },
   todayNoteText: {
-    fontSize: 14,
-    color: "#555",
+    fontSize: 13,
+    color: "#666",
     fontStyle: "italic",
-    marginTop: 8,
+    marginTop: 12,
     textAlign: "center",
+    paddingHorizontal: 10,
   },
   moodsContainer: {
     flexDirection: "column",
-    gap: 12,
+    gap: 10,
   },
   moodButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "white",
-    padding: 18,
-    borderRadius: 15,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 3,
-    position: "relative",
   },
   selectedMood: {
     backgroundColor: "#e8f5e9",
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: "#4caf50",
     transform: [{ scale: 1.02 }],
   },
-  moodColorIndicator: {
-    width: 4,
-    height: "100%",
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    borderTopLeftRadius: 15,
-    borderBottomLeftRadius: 15,
-  },
   emoji: {
-    fontSize: 40,
-    marginLeft: 10,
-    marginRight: 20,
-  },
-  moodTextContainer: {
-    flex: 1,
+    fontSize: 32,
+    marginRight: 14,
   },
   moodLabel: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#333",
     fontWeight: "600",
+    flex: 1,
   },
   noteContainer: {
-    marginTop: 20,
+    marginTop: 14,
     backgroundColor: "white",
-    padding: 20,
-    borderRadius: 15,
+    padding: 14,
+    borderRadius: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 3,
   },
   noteLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#333",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   noteInput: {
     backgroundColor: "#f9f9f9",
     borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    minHeight: 80,
+    padding: 10,
+    fontSize: 14,
+    minHeight: 55,
     textAlignVertical: "top",
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  characterCount: {
-    fontSize: 12,
-    color: "#999",
-    textAlign: "right",
-    marginTop: 5,
-  },
   buttonRow: {
     flexDirection: "row",
     gap: 10,
-    marginTop: 15,
+    marginTop: 10,
   },
   cancelButton: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    padding: 15,
+    paddingVertical: 11,
     borderRadius: 10,
     alignItems: "center",
   },
   cancelButtonText: {
     color: "#666",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
   saveButton: {
     flex: 1,
     backgroundColor: "#4caf50",
-    padding: 15,
+    paddingVertical: 11,
     borderRadius: 10,
     alignItems: "center",
   },
   saveButtonText: {
     color: "white",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
+  },
+  developerCredit: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 25,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  developerLogo: {
+    width: 16,
+    height: 16,
+    opacity: 0.5,
+  },
+  developerText: {
+    fontSize: 11,
+    color: "#bbb",
+    fontWeight: "400",
   },
 });

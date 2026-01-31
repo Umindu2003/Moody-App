@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -35,17 +36,21 @@ export default function Stats() {
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("week");
-  const [fadeAnim] = useState(new Animated.Value(0));
+
+  // Animations - Start with values at 1 to avoid gray card flash
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const headerScale = useRef(new Animated.Value(1)).current;
+  const periodAnims = useRef(
+    ["week", "month", "year"].map(() => new Animated.Value(1)),
+  ).current;
+  const metricAnims = useRef(
+    [0, 1, 2].map(() => new Animated.Value(1)),
+  ).current;
+  const chartAnims = useRef([0, 1, 2].map(() => new Animated.Value(1))).current;
 
   useEffect(() => {
     loadMoodData();
-
-    // Entrance animation
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
   }, []);
 
   // Auto-refresh when screen comes into focus
@@ -441,45 +446,76 @@ export default function Stats() {
       showsVerticalScrollIndicator={false}
     >
       <Animated.View style={{ opacity: fadeAnim }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Statistics</Text>
-            <Text style={styles.subtitle}>Track your mood journey</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.exportIcon}
-            onPress={handleExportPDF}
-            disabled={exporting || filteredData.length === 0}
+        {/* Header with Gradient */}
+        <Animated.View
+          style={[
+            styles.headerContainer,
+            {
+              transform: [{ scale: headerScale }, { translateY: slideAnim }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={["#4caf50", "#66bb6a"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.headerGradient}
           >
-            {exporting ? (
-              <ActivityIndicator color="#4caf50" size="small" />
-            ) : (
-              <Ionicons name="download-outline" size={24} color="#4caf50" />
-            )}
-          </TouchableOpacity>
-        </View>
+            <View style={styles.headerContent}>
+              <Text style={styles.title}>Statistics</Text>
+              <Text style={styles.subtitle}>Track your mood journey</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.exportButton}
+              onPress={handleExportPDF}
+              disabled={exporting || filteredData.length === 0}
+            >
+              {exporting ? (
+                <ActivityIndicator color="#4caf50" size="small" />
+              ) : (
+                <Ionicons name="download-outline" size={24} color="white" />
+              )}
+            </TouchableOpacity>
+          </LinearGradient>
+        </Animated.View>
 
         {/* Period Selector */}
         <View style={styles.periodSelector}>
-          {["week", "month", "year"].map((period) => (
-            <TouchableOpacity
+          {["week", "month", "year"].map((period, index) => (
+            <Animated.View
               key={period}
               style={[
-                styles.periodChip,
-                selectedPeriod === period && styles.periodChipActive,
+                styles.periodChipWrapper,
+                {
+                  opacity: periodAnims[index],
+                  transform: [
+                    {
+                      scale: periodAnims[index].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.5, 1],
+                      }),
+                    },
+                  ],
+                },
               ]}
-              onPress={() => setSelectedPeriod(period as TimePeriod)}
             >
-              <Text
+              <TouchableOpacity
                 style={[
-                  styles.periodChipText,
-                  selectedPeriod === period && styles.periodChipTextActive,
+                  styles.periodChip,
+                  selectedPeriod === period && styles.periodChipActive,
                 ]}
+                onPress={() => setSelectedPeriod(period as TimePeriod)}
               >
-                {period.charAt(0).toUpperCase() + period.slice(1)}
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.periodChipText,
+                    selectedPeriod === period && styles.periodChipTextActive,
+                  ]}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           ))}
         </View>
 
@@ -487,175 +523,369 @@ export default function Stats() {
         {insights && insights.totalEntries > 0 ? (
           <>
             <View style={styles.metricsRow}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricEmoji}>
-                  {getMoodEmoji(insights.averageMood)}
-                </Text>
-                <Text style={styles.metricValue}>
-                  {insights.averageMood.toFixed(1)}
-                </Text>
-                <Text style={styles.metricLabel}>Average</Text>
-              </View>
+              <Animated.View
+                style={[
+                  styles.metricCardWrapper,
+                  {
+                    opacity: metricAnims[0],
+                    transform: [
+                      {
+                        translateY: metricAnims[0].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [30, 0],
+                        }),
+                      },
+                      {
+                        scale: metricAnims[0].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.metricCard}>
+                  <View
+                    style={[
+                      styles.metricIconBg,
+                      { backgroundColor: "#e8f5e9" },
+                    ]}
+                  >
+                    <Text style={styles.metricEmoji}>
+                      {getMoodEmoji(insights.averageMood)}
+                    </Text>
+                  </View>
+                  <Text style={styles.metricValue}>
+                    {insights.averageMood.toFixed(1)}
+                  </Text>
+                  <Text style={styles.metricLabel}>Average</Text>
+                </View>
+              </Animated.View>
 
-              <View style={styles.metricCard}>
-                <Ionicons name="flame-outline" size={24} color="#ff9800" />
-                <Text style={styles.metricValue}>{insights.currentStreak}</Text>
-                <Text style={styles.metricLabel}>Streak</Text>
-              </View>
+              <Animated.View
+                style={[
+                  styles.metricCardWrapper,
+                  {
+                    opacity: metricAnims[1],
+                    transform: [
+                      {
+                        translateY: metricAnims[1].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [30, 0],
+                        }),
+                      },
+                      {
+                        scale: metricAnims[1].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.metricCard}>
+                  <View
+                    style={[
+                      styles.metricIconBg,
+                      { backgroundColor: "#fff3e0" },
+                    ]}
+                  >
+                    <Ionicons name="flame" size={28} color="#ff9800" />
+                  </View>
+                  <Text style={styles.metricValue}>
+                    {insights.currentStreak}
+                  </Text>
+                  <Text style={styles.metricLabel}>Streak</Text>
+                </View>
+              </Animated.View>
 
-              <View style={styles.metricCard}>
-                <Ionicons
-                  name={
-                    insights.moodTrend === "improving"
-                      ? "trending-up"
-                      : insights.moodTrend === "declining"
-                        ? "trending-down"
-                        : "stats-chart"
-                  }
-                  size={24}
-                  color={getTrendColor(insights.moodTrend)}
-                />
-                <Text style={styles.metricValue}>{insights.moodTrend}</Text>
-                <Text style={styles.metricLabel}>Trend</Text>
-              </View>
+              <Animated.View
+                style={[
+                  styles.metricCardWrapper,
+                  {
+                    opacity: metricAnims[2],
+                    transform: [
+                      {
+                        translateY: metricAnims[2].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [30, 0],
+                        }),
+                      },
+                      {
+                        scale: metricAnims[2].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.metricCard}>
+                  <View
+                    style={[
+                      styles.metricIconBg,
+                      {
+                        backgroundColor:
+                          insights.moodTrend === "improving"
+                            ? "#e8f5e9"
+                            : insights.moodTrend === "declining"
+                              ? "#ffebee"
+                              : "#fff8e1",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={
+                        insights.moodTrend === "improving"
+                          ? "trending-up"
+                          : insights.moodTrend === "declining"
+                            ? "trending-down"
+                            : "stats-chart"
+                      }
+                      size={28}
+                      color={getTrendColor(insights.moodTrend)}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.metricValue,
+                      { fontSize: 16, textTransform: "capitalize" },
+                    ]}
+                  >
+                    {insights.moodTrend}
+                  </Text>
+                  <Text style={styles.metricLabel}>Trend</Text>
+                </View>
+              </Animated.View>
             </View>
 
             {/* Mood Trend Chart */}
             {filteredData.length > 0 && (
-              <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Mood Trend</Text>
-                <View style={styles.chartWrapper}>
-                  <LineChart
-                    data={chartData}
-                    width={screenWidth - 60}
-                    height={220}
-                    chartConfig={{
-                      backgroundColor: "#f8f9fa",
-                      backgroundGradientFrom: "#ffffff",
-                      backgroundGradientTo: "#f8f9fa",
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-                      labelColor: (opacity = 1) =>
-                        `rgba(0, 0, 0, ${opacity * 0.7})`,
-                      propsForDots: {
-                        r: "6",
-                        strokeWidth: "3",
-                        stroke: "#4caf50",
-                        fill: "#ffffff",
+              <Animated.View
+                style={[
+                  styles.chartCardWrapper,
+                  {
+                    opacity: chartAnims[0],
+                    transform: [
+                      {
+                        translateY: chartAnims[0].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [40, 0],
+                        }),
                       },
-                      strokeWidth: 3,
-                      propsForBackgroundLines: {
-                        strokeDasharray: "",
-                        stroke: "#e0e0e0",
-                        strokeWidth: 1,
-                      },
-                      propsForLabels: {
-                        fontSize: 9,
-                      },
-                    }}
-                    bezier
-                    style={styles.chart}
-                    withInnerLines={true}
-                    withOuterLines={true}
-                    withShadow={true}
-                    segments={4}
-                    yAxisLabel=""
-                    yAxisSuffix=""
-                    formatYLabel={(value) => {
-                      const numValue = parseFloat(value);
-                      if (numValue <= 1) return "😢 V.Sad";
-                      if (numValue <= 2) return "🥺 Sad";
-                      if (numValue <= 3) return "😌 Neutral";
-                      if (numValue <= 4) return "🥰 Happy";
-                      return "🤩 V.Happy";
-                    }}
-                    fromZero
-                  />
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.chartCard}>
+                  <View style={styles.chartHeader}>
+                    <Ionicons name="analytics" size={20} color="#4caf50" />
+                    <Text style={styles.chartTitle}>Mood Trend</Text>
+                  </View>
+                  <View style={styles.chartWrapper}>
+                    <LineChart
+                      data={chartData}
+                      width={screenWidth - 60}
+                      height={220}
+                      chartConfig={{
+                        backgroundColor: "#f8f9fa",
+                        backgroundGradientFrom: "#ffffff",
+                        backgroundGradientTo: "#f8f9fa",
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+                        labelColor: (opacity = 1) =>
+                          `rgba(0, 0, 0, ${opacity * 0.7})`,
+                        propsForDots: {
+                          r: "6",
+                          strokeWidth: "3",
+                          stroke: "#4caf50",
+                          fill: "#ffffff",
+                        },
+                        strokeWidth: 3,
+                        propsForBackgroundLines: {
+                          strokeDasharray: "",
+                          stroke: "#e0e0e0",
+                          strokeWidth: 1,
+                        },
+                        propsForLabels: {
+                          fontSize: 9,
+                        },
+                      }}
+                      bezier
+                      style={styles.chart}
+                      withInnerLines={true}
+                      withOuterLines={true}
+                      withShadow={true}
+                      segments={4}
+                      yAxisLabel=""
+                      yAxisSuffix=""
+                      formatYLabel={(value) => {
+                        const numValue = parseFloat(value);
+                        if (numValue <= 1) return "😢 V.Sad";
+                        if (numValue <= 2) return "🥺 Sad";
+                        if (numValue <= 3) return "😌 Neutral";
+                        if (numValue <= 4) return "🥰 Happy";
+                        return "🤩 V.Happy";
+                      }}
+                      fromZero
+                    />
+                  </View>
                 </View>
-              </View>
+              </Animated.View>
             )}
 
             {/* Period Comparison */}
             {filteredData.length > 0 && comparison.previousAvg > 0 && (
-              <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Period Comparison</Text>
-                <View style={styles.comparisonContainer}>
-                  <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>
-                      {comparison.currentLabel}
-                    </Text>
-                    <Text style={styles.comparisonEmoji}>
-                      {getMoodEmoji(comparison.currentAvg)}
-                    </Text>
-                    <Text style={styles.comparisonValue}>
-                      {comparison.currentAvg.toFixed(1)}
-                    </Text>
+              <Animated.View
+                style={[
+                  styles.chartCardWrapper,
+                  {
+                    opacity: chartAnims[1],
+                    transform: [
+                      {
+                        translateY: chartAnims[1].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [40, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.chartCard}>
+                  <View style={styles.chartHeader}>
+                    <Ionicons name="git-compare" size={20} color="#4caf50" />
+                    <Text style={styles.chartTitle}>Period Comparison</Text>
                   </View>
+                  <View style={styles.comparisonContainer}>
+                    <View style={styles.comparisonItem}>
+                      <Text style={styles.comparisonLabel}>
+                        {comparison.currentLabel}
+                      </Text>
+                      <View style={styles.comparisonEmojiContainer}>
+                        <Text style={styles.comparisonEmoji}>
+                          {getMoodEmoji(comparison.currentAvg)}
+                        </Text>
+                      </View>
+                      <Text style={styles.comparisonValue}>
+                        {comparison.currentAvg.toFixed(1)}
+                      </Text>
+                    </View>
 
-                  <View style={styles.comparisonDivider}>
-                    <Ionicons
-                      name={
-                        comparison.currentAvg > comparison.previousAvg
-                          ? "trending-up"
-                          : comparison.currentAvg < comparison.previousAvg
-                            ? "trending-down"
-                            : "remove"
-                      }
-                      size={32}
-                      color={
-                        comparison.currentAvg > comparison.previousAvg
-                          ? "#4caf50"
-                          : comparison.currentAvg < comparison.previousAvg
-                            ? "#f44336"
-                            : "#ffc107"
-                      }
-                    />
-                  </View>
+                    <View style={styles.comparisonDivider}>
+                      <View
+                        style={[
+                          styles.comparisonArrowBg,
+                          {
+                            backgroundColor:
+                              comparison.currentAvg > comparison.previousAvg
+                                ? "#e8f5e9"
+                                : comparison.currentAvg < comparison.previousAvg
+                                  ? "#ffebee"
+                                  : "#fff8e1",
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            comparison.currentAvg > comparison.previousAvg
+                              ? "trending-up"
+                              : comparison.currentAvg < comparison.previousAvg
+                                ? "trending-down"
+                                : "remove"
+                          }
+                          size={28}
+                          color={
+                            comparison.currentAvg > comparison.previousAvg
+                              ? "#4caf50"
+                              : comparison.currentAvg < comparison.previousAvg
+                                ? "#f44336"
+                                : "#ffc107"
+                          }
+                        />
+                      </View>
+                    </View>
 
-                  <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>
-                      {comparison.previousLabel}
-                    </Text>
-                    <Text style={styles.comparisonEmoji}>
-                      {getMoodEmoji(comparison.previousAvg)}
-                    </Text>
-                    <Text style={styles.comparisonValue}>
-                      {comparison.previousAvg.toFixed(1)}
-                    </Text>
+                    <View style={styles.comparisonItem}>
+                      <Text style={styles.comparisonLabel}>
+                        {comparison.previousLabel}
+                      </Text>
+                      <View style={styles.comparisonEmojiContainer}>
+                        <Text style={styles.comparisonEmoji}>
+                          {getMoodEmoji(comparison.previousAvg)}
+                        </Text>
+                      </View>
+                      <Text style={styles.comparisonValue}>
+                        {comparison.previousAvg.toFixed(1)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
+              </Animated.View>
             )}
 
             {/* Mood Distribution */}
             {getMoodDistribution().length > 0 && (
-              <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Mood Distribution</Text>
-                <View style={styles.chartWrapper}>
-                  <PieChart
-                    data={getMoodDistribution()}
-                    width={screenWidth - 60}
-                    height={220}
-                    chartConfig={{
-                      color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                    }}
-                    accessor="percentage"
-                    backgroundColor="transparent"
-                    paddingLeft="5"
-                    center={[5, 0]}
-                  />
+              <Animated.View
+                style={[
+                  styles.chartCardWrapper,
+                  {
+                    opacity: chartAnims[2],
+                    transform: [
+                      {
+                        translateY: chartAnims[2].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [40, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.chartCard}>
+                  <View style={styles.chartHeader}>
+                    <Ionicons name="pie-chart" size={20} color="#4caf50" />
+                    <Text style={styles.chartTitle}>Mood Distribution</Text>
+                  </View>
+                  <View style={styles.chartWrapper}>
+                    <PieChart
+                      data={getMoodDistribution()}
+                      width={screenWidth - 60}
+                      height={220}
+                      chartConfig={{
+                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                      }}
+                      accessor="percentage"
+                      backgroundColor="transparent"
+                      paddingLeft="5"
+                      center={[5, 0]}
+                    />
+                  </View>
                 </View>
-              </View>
+              </Animated.View>
             )}
           </>
         ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateEmoji}>📊</Text>
+          <Animated.View
+            style={[
+              styles.emptyState,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="bar-chart-outline" size={60} color="#ccc" />
+            </View>
             <Text style={styles.emptyStateText}>No data yet</Text>
             <Text style={styles.emptyStateSubtext}>
               Start tracking your mood to see insights
             </Text>
-          </View>
+          </Animated.View>
         )}
       </Animated.View>
     </ScrollView>
@@ -667,64 +897,74 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
-  header: {
+  headerContainer: {
+    marginHorizontal: 20,
+    marginTop: 50,
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#4caf50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  headerGradient: {
+    padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    paddingTop: 30,
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "bold",
-    color: "#1a1a1a",
+    color: "white",
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 15,
-    color: "#666",
+    color: "rgba(255,255,255,0.8)",
   },
-  exportIcon: {
+  exportButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   periodSelector: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 20,
     gap: 10,
   },
-  periodChip: {
+  periodChipWrapper: {
     flex: 1,
-    paddingVertical: 12,
+  },
+  periodChip: {
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: "#fff",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   periodChipActive: {
     backgroundColor: "#4caf50",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: "#4caf50",
+    shadowOpacity: 0.3,
   },
   periodChipText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#666",
   },
   periodChipTextActive: {
@@ -736,59 +976,68 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
-  metricCard: {
+  metricCardWrapper: {
     flex: 1,
+  },
+  metricCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  metricValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1a1a1a",
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: "#999",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  metricEmoji: {
-    fontSize: 28,
-  },
-  trendIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 5,
-  },
-  chartCard: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
   },
+  metricIconBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  metricValue: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#1a1a1a",
+    marginBottom: 4,
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: "#999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontWeight: "600",
+  },
+  metricEmoji: {
+    fontSize: 28,
+  },
+  chartCardWrapper: {
+    marginBottom: 16,
+  },
+  chartCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  chartHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
   chartTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#1a1a1a",
-    marginBottom: 16,
   },
   chartWrapper: {
     alignItems: "center",
@@ -802,67 +1051,59 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingVertical: 10,
+    paddingVertical: 15,
   },
   comparisonItem: {
     flex: 1,
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   comparisonLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#999",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    fontWeight: "600",
+  },
+  comparisonEmojiContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
   },
   comparisonEmoji: {
-    fontSize: 48,
+    fontSize: 40,
   },
   comparisonValue: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#1a1a1a",
   },
   comparisonDivider: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
   },
-  distributionGrid: {
-    gap: 16,
-  },
-  distributionItem: {
-    gap: 8,
-  },
-  distributionBar: {
-    height: 8,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  distributionFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  distributionInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  comparisonArrowBg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
-  },
-  distributionEmoji: {
-    fontSize: 20,
-  },
-  distributionPercent: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
+    justifyContent: "center",
   },
   emptyState: {
     alignItems: "center",
     paddingVertical: 80,
     paddingHorizontal: 40,
   },
-  emptyStateEmoji: {
-    fontSize: 72,
-    marginBottom: 16,
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
   },
   emptyStateText: {
     fontSize: 20,

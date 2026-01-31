@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect, useRef, useState } from "react";
 import {
     Alert,
     Animated,
@@ -29,7 +30,6 @@ export default function Settings() {
   const [selectedTime, setSelectedTime] = useState({ hour: 21, minute: 0 });
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [fadeAnim] = useState(new Animated.Value(0));
 
   // Profile states
   const [userName, setUserName] = useState("");
@@ -41,14 +41,16 @@ export default function Settings() {
     Array<{ label: string; hour: number; minute: number }>
   >([]);
 
+  // Animations - Start with values at 1 to avoid gray card flash
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const headerScale = useRef(new Animated.Value(1)).current;
+  const sectionAnims = useRef(
+    [0, 1, 2, 3].map(() => new Animated.Value(1)),
+  ).current;
+
   useEffect(() => {
     loadSettings();
-
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
   }, []);
 
   const loadSettings = async () => {
@@ -167,201 +169,341 @@ export default function Settings() {
   }
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Settings</Text>
+        {/* Header with Gradient */}
+        <Animated.View
+          style={[
+            styles.headerContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: headerScale }, { translateY: slideAnim }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={["#4caf50", "#66bb6a"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.headerGradient}
+          >
+            <View style={styles.headerContent}>
+              <Text style={styles.title}>Settings</Text>
+              <Text style={styles.subtitle}>Customize your experience</Text>
+            </View>
+            <View style={styles.headerIcon}>
+              <Ionicons
+                name="settings"
+                size={40}
+                color="rgba(255,255,255,0.3)"
+              />
+            </View>
+          </LinearGradient>
+        </Animated.View>
 
         {/* Profile Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Ionicons name="person-outline" size={20} color="#4caf50" /> Profile
-          </Text>
-
-          {editingName ? (
-            <View style={styles.editNameContainer}>
-              <View style={styles.nameInputWrapper}>
-                <TextInput
-                  style={styles.nameInput}
-                  value={newName}
-                  onChangeText={setNewName}
-                  placeholder="Enter your name"
-                  maxLength={30}
-                  autoFocus
-                />
-              </View>
-              <View style={styles.editButtonsRow}>
-                <TouchableOpacity
-                  style={styles.cancelEditButton}
-                  onPress={() => {
-                    setEditingName(false);
-                    setNewName(userName);
-                  }}
-                >
-                  <Text style={styles.cancelEditText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.saveNameButton,
-                    savingName && styles.saveNameButtonDisabled,
-                  ]}
-                  onPress={handleSaveName}
-                  disabled={savingName}
-                >
-                  <Text style={styles.saveNameText}>
-                    {savingName ? "Saving..." : "Save"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Name</Text>
-                <Text style={styles.userName}>{userName}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => setEditingName(true)}
+        <Animated.View
+          style={[
+            styles.sectionWrapper,
+            {
+              opacity: sectionAnims[0],
+              transform: [
+                {
+                  translateY: sectionAnims[0].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View
+                style={[styles.sectionIconBg, { backgroundColor: "#e8f5e9" }]}
               >
-                <Ionicons name="pencil" size={18} color="#4caf50" />
-                <Text style={styles.editButtonText}>Edit</Text>
-              </TouchableOpacity>
+                <Ionicons name="person" size={20} color="#4caf50" />
+              </View>
+              <Text style={styles.sectionTitle}>Profile</Text>
             </View>
-          )}
-        </View>
 
-        {/* Notification Settings Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Ionicons name="notifications-outline" size={20} color="#4caf50" />{" "}
-            Daily Reminders
-          </Text>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Enable Mood Reminders</Text>
-              <Text style={styles.settingDescription}>
-                Get a daily notification to log your mood before midnight
-              </Text>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={handleToggleNotifications}
-              trackColor={{ false: "#e0e0e0", true: "#a5d6a7" }}
-              thumbColor={notificationsEnabled ? "#4caf50" : "#f4f3f4"}
-            />
-          </View>
-
-          {notificationsEnabled && (
-            <View style={styles.timeSettingContainer}>
+            {editingName ? (
+              <View style={styles.editNameContainer}>
+                <View style={styles.nameInputWrapper}>
+                  <TextInput
+                    style={styles.nameInput}
+                    value={newName}
+                    onChangeText={setNewName}
+                    placeholder="Enter your name"
+                    maxLength={30}
+                    autoFocus
+                  />
+                </View>
+                <View style={styles.editButtonsRow}>
+                  <TouchableOpacity
+                    style={styles.cancelEditButton}
+                    onPress={() => {
+                      setEditingName(false);
+                      setNewName(userName);
+                    }}
+                  >
+                    <Text style={styles.cancelEditText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.saveNameButton,
+                      savingName && styles.saveNameButtonDisabled,
+                    ]}
+                    onPress={handleSaveName}
+                    disabled={savingName}
+                  >
+                    <Text style={styles.saveNameText}>
+                      {savingName ? "Saving..." : "Save"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
-                  <Text style={styles.settingLabel}>Reminder Time</Text>
-                  <Text style={styles.settingDescription}>
-                    When would you like to be reminded?
-                  </Text>
+                  <Text style={styles.settingLabel}>Name</Text>
+                  <Text style={styles.userName}>{userName}</Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.timeButton}
-                  onPress={() => setShowTimePicker(!showTimePicker)}
+                  style={styles.editButton}
+                  onPress={() => setEditingName(true)}
                 >
-                  <Text style={styles.timeButtonText}>
-                    {formatTime(selectedTime.hour, selectedTime.minute)}
-                  </Text>
-                  <Ionicons
-                    name={showTimePicker ? "chevron-up" : "chevron-down"}
-                    size={20}
-                    color="#4caf50"
-                  />
+                  <Ionicons name="pencil" size={18} color="#4caf50" />
+                  <Text style={styles.editButtonText}>Edit</Text>
                 </TouchableOpacity>
               </View>
+            )}
+          </View>
+        </Animated.View>
 
-              {showTimePicker && (
-                <View style={styles.timePickerContainer}>
-                  {availableTimes.map((time) => (
-                    <TouchableOpacity
-                      key={time.label}
-                      style={[
-                        styles.timeOption,
-                        selectedTime.hour === time.hour &&
-                          selectedTime.minute === time.minute &&
-                          styles.timeOptionSelected,
-                      ]}
-                      onPress={() => handleTimeSelect(time.hour, time.minute)}
-                    >
-                      <Text
+        {/* Notification Settings Section */}
+        <Animated.View
+          style={[
+            styles.sectionWrapper,
+            {
+              opacity: sectionAnims[1],
+              transform: [
+                {
+                  translateY: sectionAnims[1].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View
+                style={[styles.sectionIconBg, { backgroundColor: "#fff3e0" }]}
+              >
+                <Ionicons name="notifications" size={20} color="#ff9800" />
+              </View>
+              <Text style={styles.sectionTitle}>Daily Reminders</Text>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Enable Mood Reminders</Text>
+                <Text style={styles.settingDescription}>
+                  Get a daily notification to log your mood
+                </Text>
+              </View>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={handleToggleNotifications}
+                trackColor={{ false: "#e0e0e0", true: "#a5d6a7" }}
+                thumbColor={notificationsEnabled ? "#4caf50" : "#f4f3f4"}
+              />
+            </View>
+
+            {notificationsEnabled && (
+              <View style={styles.timeSettingContainer}>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingLabel}>Reminder Time</Text>
+                    <Text style={styles.settingDescription}>
+                      When would you like to be reminded?
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.timeButton}
+                    onPress={() => setShowTimePicker(!showTimePicker)}
+                  >
+                    <Text style={styles.timeButtonText}>
+                      {formatTime(selectedTime.hour, selectedTime.minute)}
+                    </Text>
+                    <Ionicons
+                      name={showTimePicker ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color="#4caf50"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {showTimePicker && (
+                  <View style={styles.timePickerContainer}>
+                    {availableTimes.map((time) => (
+                      <TouchableOpacity
+                        key={time.label}
                         style={[
-                          styles.timeOptionText,
+                          styles.timeOption,
                           selectedTime.hour === time.hour &&
                             selectedTime.minute === time.minute &&
-                            styles.timeOptionTextSelected,
+                            styles.timeOptionSelected,
                         ]}
+                        onPress={() => handleTimeSelect(time.hour, time.minute)}
                       >
-                        {time.label}
-                      </Text>
-                      {selectedTime.hour === time.hour &&
-                        selectedTime.minute === time.minute && (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={20}
-                            color="#4caf50"
-                          />
-                        )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-        </View>
+                        <Text
+                          style={[
+                            styles.timeOptionText,
+                            selectedTime.hour === time.hour &&
+                              selectedTime.minute === time.minute &&
+                              styles.timeOptionTextSelected,
+                          ]}
+                        >
+                          {time.label}
+                        </Text>
+                        {selectedTime.hour === time.hour &&
+                          selectedTime.minute === time.minute && (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={20}
+                              color="#4caf50"
+                            />
+                          )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        </Animated.View>
 
         {/* Info Section */}
-        <View style={styles.infoSection}>
-          <Ionicons name="information-circle-outline" size={24} color="#666" />
-          <Text style={styles.infoText}>
-            Daily reminders help you maintain a consistent mood tracking habit.
-            We recommend setting a reminder in the evening so you can reflect on
-            your entire day.
-          </Text>
-        </View>
+        <Animated.View
+          style={[
+            styles.sectionWrapper,
+            {
+              opacity: sectionAnims[2],
+              transform: [
+                {
+                  translateY: sectionAnims[2].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.infoSection}>
+            <View style={styles.infoIconBg}>
+              <Ionicons name="bulb" size={20} color="#2196f3" />
+            </View>
+            <Text style={styles.infoText}>
+              Daily reminders help you maintain a consistent mood tracking
+              habit. We recommend setting a reminder in the evening so you can
+              reflect on your entire day.
+            </Text>
+          </View>
+        </Animated.View>
 
         {/* About Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Ionicons name="heart-outline" size={20} color="#4caf50" /> About
-            Moody
-          </Text>
-          <View style={styles.aboutContainer}>
-            <Text style={styles.aboutText}>
-              Moody helps you track and understand your emotional patterns over
-              time. By logging your mood daily, you can gain insights into what
-              affects your well-being.
-            </Text>
-            <Text style={styles.versionText}>Version 1.0.0</Text>
+        <Animated.View
+          style={[
+            styles.sectionWrapper,
+            {
+              opacity: sectionAnims[3],
+              transform: [
+                {
+                  translateY: sectionAnims[3].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View
+                style={[styles.sectionIconBg, { backgroundColor: "#fce4ec" }]}
+              >
+                <Ionicons name="heart" size={20} color="#e91e63" />
+              </View>
+              <Text style={styles.sectionTitle}>About Moody</Text>
+            </View>
+            <View style={styles.aboutContainer}>
+              <Text style={styles.aboutText}>
+                Moody helps you track and understand your emotional patterns
+                over time. By logging your mood daily, you can gain insights
+                into what affects your well-being.
+              </Text>
+              <View style={styles.versionBadge}>
+                <Text style={styles.versionText}>Version 1.0.0</Text>
+              </View>
+            </View>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
-    </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f9fa",
   },
   scrollContent: {
+    paddingBottom: 30,
+  },
+  headerContainer: {
+    marginHorizontal: 20,
+    marginTop: 50,
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#4caf50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  headerGradient: {
     padding: 20,
-    paddingTop: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerIcon: {
+    opacity: 0.5,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#333",
-    marginBottom: 20,
+    color: "white",
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.8)",
   },
   loadingText: {
     textAlign: "center",
@@ -369,22 +511,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
+  sectionWrapper: {
+    paddingHorizontal: 20,
+  },
   section: {
     backgroundColor: "white",
-    borderRadius: 15,
+    borderRadius: 20,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  sectionIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#333",
-    marginBottom: 15,
   },
   userName: {
     fontSize: 18,
@@ -520,10 +677,19 @@ const styles = StyleSheet.create({
   infoSection: {
     flexDirection: "row",
     backgroundColor: "#e3f2fd",
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 20,
-    gap: 10,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: "flex-start",
+  },
+  infoIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#bbdefb",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   infoText: {
     flex: 1,
@@ -532,16 +698,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   aboutContainer: {
-    gap: 10,
+    gap: 12,
   },
   aboutText: {
     fontSize: 14,
     color: "#666",
     lineHeight: 22,
   },
-  versionText: {
-    fontSize: 13,
-    color: "#999",
+  versionBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     marginTop: 5,
+  },
+  versionText: {
+    fontSize: 12,
+    color: "#888",
+    fontWeight: "500",
   },
 });
