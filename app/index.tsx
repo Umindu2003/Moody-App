@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -164,30 +163,18 @@ export default function Index() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={60}
     >
-      {/* Header with Gradient - Fixed at top */}
-      <View style={styles.headerContainer}>
-        <LinearGradient
-          colors={["#4caf50", "#66bb6a"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>{greeting}</Text>
-            <Text style={styles.headerSubtitle}>{subtitle}</Text>
-          </View>
-          <View style={styles.headerIcon}>
-            <Ionicons name="happy" size={32} color="rgba(255,255,255,0.3)" />
-          </View>
-        </LinearGradient>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Greeting Section */}
+        <View style={styles.greetingContainer}>
+          <Text style={styles.greetingTitle}>{greeting}</Text>
+          <Text style={styles.greetingSubtitle}>{subtitle}</Text>
+        </View>
+
         {/* Today's Mood Card - Centered & Beautiful */}
         {todaysMood && (
           <View style={styles.todayMoodContainer}>
@@ -275,12 +262,13 @@ export default function Index() {
 
         {/* Developer Credit */}
         <View style={styles.developerCredit}>
+          <Text style={styles.developerText}>Developed by </Text>
           <Image
             source={require("../assets/images/MainLogo.png")}
             style={styles.developerLogo}
             resizeMode="contain"
           />
-          <Text style={styles.developerText}>Developed by Umindu Isith</Text>
+          <Text style={styles.developerText}>mindu Isith</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -292,46 +280,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
-  headerContainer: {
-    marginHorizontal: 20,
-    marginTop: 50,
-    marginBottom: 15,
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#4caf50",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+  greetingContainer: {
+    paddingHorizontal: 4,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  headerGradient: {
-    padding: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerIcon: {
-    opacity: 0.5,
-  },
-  headerTitle: {
-    fontSize: 28,
+  greetingTitle: {
+    fontSize: 26,
     fontWeight: "bold",
-    color: "white",
+    color: "#333",
     marginBottom: 4,
   },
-  headerSubtitle: {
+  greetingSubtitle: {
     fontSize: 15,
-    color: "rgba(255,255,255,0.8)",
+    color: "#666",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   sectionTitle: {
     fontSize: 17,
@@ -476,13 +445,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 25,
-    paddingVertical: 10,
-    gap: 6,
+    paddingVertical: 8,
   },
   developerLogo: {
-    width: 16,
-    height: 16,
+    width: 11,
+    height: 11,
     opacity: 0.5,
+    marginLeft: 2,
+    marginRight: -1,
   },
   developerText: {
     fontSize: 11,

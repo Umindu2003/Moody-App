@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import { Image, StyleSheet, Text, View } from "react-native";
 import LoadingScreen from "../components/LoadingScreen";
 import OnboardingScreen from "../components/OnboardingScreen";
 import { isUserOnboarded } from "../services/userService";
@@ -63,71 +64,108 @@ export default function RootLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "#4caf50",
-        tabBarInactiveTintColor: "#999",
-        tabBarStyle: {
-          backgroundColor: "white",
-          borderTopWidth: 1,
-          borderTopColor: "#e0e0e0",
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
-        },
-        headerStyle: {
-          backgroundColor: "#4caf50",
-        },
-        headerTintColor: "#fff",
-        headerTitleStyle: {
-          fontWeight: "bold",
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Track Mood",
-          tabBarLabel: "Track",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="happy-outline" size={size} color={color} />
-          ),
+    <>
+      <View style={styles.topHeader}>
+        <Image
+          source={require("../assets/images/MoodyLogo.png")}
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
+        <Text style={styles.headerTitle}>Moody</Text>
+      </View>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: "#4caf50",
+          tabBarInactiveTintColor: "#999",
+          tabBarStyle: {
+            backgroundColor: "white",
+            borderTopWidth: 1,
+            borderTopColor: "#e0e0e0",
+            paddingBottom: 5,
+            paddingTop: 5,
+            height: 60,
+          },
+          headerStyle: {
+            backgroundColor: "#4caf50",
+          },
+          headerTintColor: "#fff",
+          headerTitleStyle: {
+            fontWeight: "bold",
+          },
         }}
-      />
-      <Tabs.Screen
-        name="stats"
-        options={{
-          title: "Statistics",
-          tabBarLabel: "Stats",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: "Mood History",
-          tabBarLabel: "History",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarLabel: "Settings",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Track Mood",
+            tabBarLabel: "Track",
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="happy-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="stats"
+          options={{
+            title: "Statistics",
+            tabBarLabel: "Stats",
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="stats-chart-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: "Mood History",
+            tabBarLabel: "History",
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="time-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: "Settings",
+            tabBarLabel: "Settings",
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="settings-outline" size={size} color={color} />
+            ),
+          }}
+        />
+      </Tabs>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  topHeader: {
+    backgroundColor: "#4caf50",
+    paddingTop: 45,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "white",
+  },
+});

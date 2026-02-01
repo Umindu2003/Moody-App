@@ -728,14 +728,22 @@ export default function Stats() {
                       yAxisLabel=""
                       yAxisSuffix=""
                       formatYLabel={(value) => {
-                        const numValue = parseFloat(value);
-                        if (numValue <= 1) return "Very Sad";
-                        if (numValue <= 2) return "Sad";
-                        if (numValue <= 3) return "Neutral";
-                        if (numValue <= 4) return "Happy";
-                        return "Very Happy";
+                        const numValue = Math.round(parseFloat(value));
+                        switch (numValue) {
+                          case 1:
+                            return "Very Sad";
+                          case 2:
+                            return "Sad";
+                          case 3:
+                            return "Neutral";
+                          case 4:
+                            return "Happy";
+                          case 5:
+                            return "Very Happy";
+                          default:
+                            return "";
+                        }
                       }}
-                      fromZero
                     />
                   </View>
                 </View>
@@ -872,7 +880,7 @@ export default function Stats() {
                         accessor="percentage"
                         backgroundColor="transparent"
                         paddingLeft="30"
-                        center={[0, 0]}
+                        center={[0, -10]}
                         hasLegend={false}
                       />
                     </View>
