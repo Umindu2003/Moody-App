@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -124,7 +125,11 @@ export default function History() {
                   { backgroundColor: `${moodColor}15` },
                 ]}
               >
-                <Text style={styles.emoji}>{item.emoji}</Text>
+                <Image
+                  source={MOODS.find((m) => m.emoji === item.emoji)?.image}
+                  style={styles.emoji}
+                  resizeMode="contain"
+                />
               </View>
               <View style={styles.moodDetails}>
                 <Text style={styles.moodLabel}>{item.mood}</Text>
@@ -271,7 +276,11 @@ export default function History() {
               ]}
               onPress={() => setSelectedFilter(mood.value)}
             >
-              <Text style={styles.filterEmoji}>{mood.emoji}</Text>
+              <Image
+                source={mood.image}
+                style={styles.filterEmoji}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </Animated.View>
         ))}
@@ -374,7 +383,7 @@ const styles = StyleSheet.create({
   },
   filterText: { fontSize: 13, fontWeight: "700", color: "#666" },
   filterTextActive: { color: "white" },
-  filterEmoji: { fontSize: 20 },
+  filterEmoji: { width: 24, height: 24 },
   listContainer: { padding: 20, paddingTop: 5 },
   moodItemContainer: { marginBottom: 12 },
   moodItem: {
@@ -399,7 +408,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 14,
   },
-  emoji: { fontSize: 32 },
+  emoji: { width: 40, height: 40 },
   moodDetails: { flex: 1 },
   moodLabel: {
     fontSize: 18,

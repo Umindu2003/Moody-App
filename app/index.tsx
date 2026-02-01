@@ -198,7 +198,11 @@ export default function Index() {
               style={styles.todayMoodGradient}
             >
               <Text style={styles.todayMoodLabel}>✨ Today's Mood</Text>
-              <Text style={styles.todayMoodEmoji}>{todaysMood.emoji}</Text>
+              <Image
+                source={MOODS.find((m) => m.emoji === todaysMood.emoji)?.image}
+                style={styles.todayMoodEmoji}
+                resizeMode="contain"
+              />
               <Text style={styles.todayMoodText}>{todaysMood.mood}</Text>
               {todaysMood.note && (
                 <Text style={styles.todayNoteText}>"{todaysMood.note}"</Text>
@@ -222,7 +226,11 @@ export default function Index() {
               disabled={loading}
               activeOpacity={0.7}
             >
-              <Text style={styles.emoji}>{mood.emoji}</Text>
+              <Image
+                source={mood.image}
+                style={styles.emoji}
+                resizeMode="contain"
+              />
               <Text style={styles.moodLabel}>{mood.label}</Text>
             </TouchableOpacity>
           ))}
@@ -348,7 +356,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   todayMoodEmoji: {
-    fontSize: 50,
+    width: 60,
+    height: 60,
     marginVertical: 8,
   },
   todayMoodLabel: {
@@ -396,7 +405,8 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.02 }],
   },
   emoji: {
-    fontSize: 32,
+    width: 40,
+    height: 40,
     marginRight: 14,
   },
   moodLabel: {

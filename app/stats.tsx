@@ -7,6 +7,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -263,7 +264,9 @@ export default function Stats() {
       const percentage = ((count / filteredData.length) * 100).toFixed(1);
 
       return {
-        name: mood.emoji,
+        name: "", // Empty string to hide default legend
+        label: mood.label,
+        image: mood.image,
         population: count,
         percentage: parseFloat(percentage),
         color: mood.color,
@@ -274,7 +277,7 @@ export default function Stats() {
   };
 
   const getMoodEmoji = (value: number) => {
-    if (value === 0) return "😌";
+    if (value === 0) return MOODS.find((m) => m.value === 3)?.image;
     const mood = MOODS.find((m) => {
       if (value >= 4.5) return m.value === 5;
       if (value >= 3.5) return m.value === 4;
@@ -282,7 +285,7 @@ export default function Stats() {
       if (value >= 1.5) return m.value === 2;
       return m.value === 1;
     });
-    return mood?.emoji || "😌";
+    return mood?.image || MOODS.find((m) => m.value === 3)?.image;
   };
 
   const getPeriodComparison = () => {
@@ -552,9 +555,11 @@ export default function Stats() {
                       { backgroundColor: "#e8f5e9" },
                     ]}
                   >
-                    <Text style={styles.metricEmoji}>
-                      {getMoodEmoji(insights.averageMood)}
-                    </Text>
+                    <Image
+                      source={getMoodEmoji(insights.averageMood)}
+                      style={styles.metricEmoji}
+                      resizeMode="contain"
+                    />
                   </View>
                   <Text style={styles.metricValue}>
                     {insights.averageMood.toFixed(1)}
@@ -724,11 +729,11 @@ export default function Stats() {
                       yAxisSuffix=""
                       formatYLabel={(value) => {
                         const numValue = parseFloat(value);
-                        if (numValue <= 1) return "😢 V.Sad";
-                        if (numValue <= 2) return "🥺 Sad";
-                        if (numValue <= 3) return "😌 Neutral";
-                        if (numValue <= 4) return "🥰 Happy";
-                        return "🤩 V.Happy";
+                        if (numValue <= 1) return "Very Sad";
+                        if (numValue <= 2) return "Sad";
+                        if (numValue <= 3) return "Neutral";
+                        if (numValue <= 4) return "Happy";
+                        return "Very Happy";
                       }}
                       fromZero
                     />
@@ -766,9 +771,11 @@ export default function Stats() {
                         {comparison.currentLabel}
                       </Text>
                       <View style={styles.comparisonEmojiContainer}>
-                        <Text style={styles.comparisonEmoji}>
-                          {getMoodEmoji(comparison.currentAvg)}
-                        </Text>
+                        <Image
+                          source={getMoodEmoji(comparison.currentAvg)}
+                          style={styles.comparisonEmoji}
+                          resizeMode="contain"
+                        />
                       </View>
                       <Text style={styles.comparisonValue}>
                         {comparison.currentAvg.toFixed(1)}
@@ -814,9 +821,11 @@ export default function Stats() {
                         {comparison.previousLabel}
                       </Text>
                       <View style={styles.comparisonEmojiContainer}>
-                        <Text style={styles.comparisonEmoji}>
-                          {getMoodEmoji(comparison.previousAvg)}
-                        </Text>
+                        <Image
+                          source={getMoodEmoji(comparison.previousAvg)}
+                          style={styles.comparisonEmoji}
+                          resizeMode="contain"
+                        />
                       </View>
                       <Text style={styles.comparisonValue}>
                         {comparison.previousAvg.toFixed(1)}
@@ -850,19 +859,58 @@ export default function Stats() {
                     <Ionicons name="pie-chart" size={20} color="#4caf50" />
                     <Text style={styles.chartTitle}>Mood Distribution</Text>
                   </View>
-                  <View style={styles.chartWrapper}>
-                    <PieChart
-                      data={getMoodDistribution()}
-                      width={screenWidth - 60}
-                      height={220}
-                      chartConfig={{
-                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                      }}
-                      accessor="percentage"
-                      backgroundColor="transparent"
-                      paddingLeft="5"
-                      center={[5, 0]}
-                    />
+                  <View style={styles.distributionContainer}>
+                    {/* Pie Chart Section */}
+                    <View style={styles.pieChartSection}>
+                      <PieChart
+                        data={getMoodDistribution()}
+                        width={140}
+                        height={160}
+                        chartConfig={{
+                          color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                        }}
+                        accessor="percentage"
+                        backgroundColor="transparent"
+                        paddingLeft="30"
+                        center={[0, 0]}
+                        hasLegend={false}
+                      />
+                    </View>
+
+                    {/* Legend Section on Right */}
+                    <View style={styles.legendSection}>
+                      {getMoodDistribution().map((item, index) => (
+                        <View key={index} style={styles.legendItemHorizontal}>
+                          <View style={styles.legendItemLeft}>
+                            <View
+                              style={[
+                                styles.legendColorDot,
+                                { backgroundColor: item.color },
+                              ]}
+                            />
+                            <Image
+                              source={item.image}
+                              style={styles.legendEmojiSmall}
+                              resizeMode="contain"
+                            />
+                          </View>
+                          <View style={styles.legendItemRight}>
+                            <Text style={styles.legendTextSmall}>
+                              {item.label}
+                            </Text>
+                            <View style={styles.legendStatsRow}>
+                              <Text style={styles.legendCount}>
+                                {item.population}{" "}
+                                {item.population === 1 ? "entry" : "entries"}
+                              </Text>
+                              <Text style={styles.legendPercentageLarge}>
+                                {item.percentage}%
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 </View>
               </Animated.View>
@@ -1012,7 +1060,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   metricEmoji: {
-    fontSize: 28,
+    width: 36,
+    height: 36,
   },
   chartCardWrapper: {
     marginBottom: 16,
@@ -1074,7 +1123,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   comparisonEmoji: {
-    fontSize: 40,
+    width: 50,
+    height: 50,
   },
   comparisonValue: {
     fontSize: 20,
@@ -1116,5 +1166,70 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     lineHeight: 20,
+  },
+  distributionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  pieChartSection: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  legendSection: {
+    flex: 1,
+    paddingLeft: 10,
+    paddingRight: 5,
+  },
+  legendItemHorizontal: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    backgroundColor: "#f8f9fa",
+    padding: 10,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "transparent",
+  },
+  legendItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  legendItemRight: {
+    flex: 1,
+  },
+  legendColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 6,
+  },
+  legendEmojiSmall: {
+    width: 28,
+    height: 28,
+  },
+  legendTextSmall: {
+    fontSize: 13,
+    color: "#333",
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  legendStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  legendCount: {
+    fontSize: 11,
+    color: "#999",
+    fontWeight: "500",
+  },
+  legendPercentageLarge: {
+    fontSize: 13,
+    color: "#4caf50",
+    fontWeight: "800",
   },
 });
