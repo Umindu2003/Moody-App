@@ -447,7 +447,7 @@ app.get("/api/ai/analyze/:userId", async (req, res) => {
     const prompt = `Act as a supportive best friend. Analyze this mood history: [${moodSummary}]. Average mood: ${avgMood.toFixed(1)}/5. Most common: ${mostCommonMood}. Give a 1-sentence observation and 1 short, fun recommendation. Use emojis. Keep it under 50 words.`;
 
     // Call Gemini API
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const analysis = response.text();
