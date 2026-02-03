@@ -1,9 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
 
 const app = express();
+
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const PORT = process.env.PORT || 3001;
 
 // Middleware
@@ -389,6 +393,72 @@ app.get("/api/moods/:userId/all", async (req, res) => {
   } catch (error) {
     console.error("Error getting all mood entries:", error);
     res.status(500).json({ error: "Failed to get all mood entries" });
+  }
+});
+
+// ============ AI ROUTES ============
+
+// Get AI mood analysis for a user
+app.get("/api/ai/analyze/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Fetch last 7 days of mood entries
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+
+    const entries = await MoodEntry.find({
+      userId: userId,
+      timestamp: { $gte: startDate },
+    })
+      .sort({ timestamp: -1 })
+      .lean();
+
+    if (entries.length === 0) {
+      return res.json({
+        analysis:
+          "Hey friend! 👋 I don't have any mood data from you yet. Start logging your moods and I'll give you personalized insights! 🌟",
+      });
+    }
+
+    // Format mood data into a summary string
+    const moodSummary = entries
+      .map((entry) => {
+        const date = new Date(entry.timestamp).toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        });
+        return `${date}: ${entry.mood} (${entry.value}/5)`;
+      })
+      .join(", ");
+
+    // Calculate basic stats for context
+    const avgMood =
+      entries.reduce((sum, e) => sum + e.value, 0) / entries.length;
+    const moodCounts = {};
+    entries.forEach((e) => {
+      moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1;
+    });
+    const mostCommonMood = Object.keys(moodCounts).reduce((a, b) =>
+      moodCounts[a] > moodCounts[b] ? a : b,
+    );
+
+    const prompt = `Act as a supportive best friend. Analyze this mood history: [${moodSummary}]. Average mood: ${avgMood.toFixed(1)}/5. Most common: ${mostCommonMood}. Give a 1-sentence observation and 1 short, fun recommendation. Use emojis. Keep it under 50 words.`;
+
+    // Call Gemini API
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const analysis = response.text();
+
+    res.json({ analysis });
+  } catch (error) {
+    console.error("Error getting AI analysis:", error);
+    res.status(500).json({
+      error: "Failed to get AI analysis",
+      analysis: "Oops! 😅 I'm having a moment. Try again in a bit, friend! 💫",
+    });
   }
 });
 

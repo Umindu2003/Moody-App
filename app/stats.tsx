@@ -8,6 +8,8 @@ import {
   Animated,
   Dimensions,
   Image,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -27,6 +29,19 @@ import { MOODS, MoodInsights } from "../types/mood";
 
 const screenWidth = Dimensions.get("window").width;
 
+// Get the correct API base URL based on platform
+const getApiBaseUrl = () => {
+  if (Platform.OS === "web") {
+    return "http://localhost:3001/api";
+  }
+  if (Platform.OS === "android") {
+    return "http://192.168.1.2:3001/api";
+  }
+  return "http://192.168.1.2:3001/api";
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 type TimePeriod = "today" | "week" | "month" | "year";
 
 export default function Stats() {
@@ -37,6 +52,11 @@ export default function Stats() {
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("week");
+
+  // AI Mood Buddy state
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAdvice, setAiAdvice] = useState("");
 
   // Animations - Start with values at 1 to avoid gray card flash
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -407,6 +427,33 @@ export default function Stats() {
     );
   };
 
+  const handleAskAI = async () => {
+    setAiModalVisible(true);
+    setAiLoading(true);
+    setAiAdvice("");
+
+    try {
+      const userId = await getUserId();
+      const response = await fetch(`${API_BASE_URL}/ai/analyze/${userId}`);
+      const data = await response.json();
+
+      if (data.analysis) {
+        setAiAdvice(data.analysis);
+      } else {
+        setAiAdvice(
+          "Hmm, I couldn't analyze your moods right now. Try again later! 🌈",
+        );
+      }
+    } catch (error) {
+      console.error("AI analysis error:", error);
+      setAiAdvice(
+        "Oops! 😅 Something went wrong. Make sure your backend is running and try again!",
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (loading) {
     return <LoadingScreen message="Analyzing your mood data..." />;
   }
@@ -468,17 +515,25 @@ export default function Stats() {
               <Text style={styles.title}>Statistics</Text>
               <Text style={styles.subtitle}>Track your mood journey</Text>
             </View>
-            <TouchableOpacity
-              style={styles.exportButton}
-              onPress={handleExportPDF}
-              disabled={exporting || filteredData.length === 0}
-            >
-              {exporting ? (
-                <ActivityIndicator color="#4caf50" size="small" />
-              ) : (
-                <Ionicons name="download-outline" size={24} color="white" />
-              )}
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={handleAskAI}
+              >
+                <Ionicons name="sparkles" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={handleExportPDF}
+                disabled={exporting || filteredData.length === 0}
+              >
+                {exporting ? (
+                  <ActivityIndicator color="#4caf50" size="small" />
+                ) : (
+                  <Ionicons name="download-outline" size={24} color="white" />
+                )}
+              </TouchableOpacity>
+            </View>
           </LinearGradient>
         </Animated.View>
 
@@ -944,6 +999,43 @@ export default function Stats() {
           </Animated.View>
         )}
       </Animated.View>
+
+      {/* AI Mood Buddy Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={aiModalVisible}
+        onRequestClose={() => setAiModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="sparkles" size={28} color="#4caf50" />
+              <Text style={styles.modalTitle}>AI Mood Buddy</Text>
+            </View>
+
+            {aiLoading ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color="#4caf50" />
+                <Text style={styles.modalLoadingText}>
+                  Analyzing your moods...
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.modalContent}>
+                <Text style={styles.modalAdvice}>{aiAdvice}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setAiModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>Thanks! 💚</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -983,6 +1075,18 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     color: "rgba(255,255,255,0.8)",
+  },
+  headerButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  headerButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   exportButton: {
     width: 48,
@@ -1239,5 +1343,73 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#4caf50",
     fontWeight: "800",
+  },
+  // AI Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: "white",
+    borderRadius: 24,
+    padding: 24,
+    width: "100%",
+    maxWidth: 340,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  modalLoading: {
+    alignItems: "center",
+    paddingVertical: 30,
+  },
+  modalLoadingText: {
+    marginTop: 16,
+    fontSize: 15,
+    color: "#666",
+  },
+  modalContent: {
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+  },
+  modalAdvice: {
+    fontSize: 16,
+    lineHeight: 26,
+    color: "#333",
+    textAlign: "center",
+  },
+  modalButton: {
+    marginTop: 24,
+    backgroundColor: "#4caf50",
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 16,
+    shadowColor: "#4caf50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "white",
   },
 });
