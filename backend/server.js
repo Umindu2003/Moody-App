@@ -447,7 +447,6 @@ app.get("/api/ai/analyze/:userId", async (req, res) => {
     const prompt = `Act as a supportive best friend. Analyze this mood history: [${moodSummary}]. Average mood: ${avgMood.toFixed(1)}/5. Most common: ${mostCommonMood}. Give a 1-sentence observation and 1 short, fun recommendation. Use emojis. Keep it under 50 words.`;
 
     // Call Gemini API
-    // Switch to 1.5-flash for better free tier limits!
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -466,6 +465,32 @@ app.get("/api/ai/analyze/:userId", async (req, res) => {
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Moody API is running" });
+});
+
+// List available Gemini models (for debugging)
+app.get("/api/ai/models", async (req, res) => {
+  const https = require("https");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`;
+
+  https
+    .get(url, (response) => {
+      let data = "";
+      response.on("data", (chunk) => {
+        data += chunk;
+      });
+      response.on("end", () => {
+        try {
+          res.json(JSON.parse(data));
+        } catch (e) {
+          res
+            .status(500)
+            .json({ error: "Failed to parse response", raw: data });
+        }
+      });
+    })
+    .on("error", (error) => {
+      res.status(500).json({ error: error.message });
+    });
 });
 
 app.listen(PORT, "0.0.0.0", () => {
