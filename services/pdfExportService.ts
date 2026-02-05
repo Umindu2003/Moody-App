@@ -15,19 +15,28 @@ export async function generateAndSharePDF(data: ExportData): Promise<void> {
   try {
     let logoSrc = "";
 
-    try {
-      const logoAsset = Asset.fromModule(require("../assets/images/Moody.png"));
-      await logoAsset.downloadAsync();
-      const logoUri = logoAsset.localUri || logoAsset.uri;
+    const loadPngDataUri = async (moduleRef: number): Promise<string> => {
+      try {
+        const asset = Asset.fromModule(moduleRef);
+        await asset.downloadAsync();
+        const uri = asset.localUri || asset.uri;
 
-      if (logoUri && FileSystem?.readAsStringAsync) {
-        const base64 = await FileSystem.readAsStringAsync(logoUri, {
-          encoding: "base64",
-        });
-        logoSrc = `data:image/png;base64,${base64}`;
-      } else if (logoUri) {
-        logoSrc = logoUri;
+        if (uri && FileSystem?.readAsStringAsync) {
+          const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: "base64",
+          });
+          return `data:image/png;base64,${base64}`;
+        }
+
+        return uri || "";
+      } catch (error) {
+        console.warn("Unable to load image for PDF:", error);
+        return "";
       }
+    };
+
+    try {
+      logoSrc = await loadPngDataUri(require("../assets/images/Moody.png"));
     } catch (logoError) {
       console.warn("Unable to load logo for PDF:", logoError);
     }
@@ -56,15 +65,16 @@ export async function generateAndSharePDF(data: ExportData): Promise<void> {
   }
 }
 
-function generateHTMLContent(data: ExportData, logoSrc: string): string {
-  const { period, moodData } = data;
+function generateHTMLContent(
+  data: ExportData,
+  logoSrc: string,
+): string {
+  const { period, moodData, distribution } = data;
   const currentDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-
-  const moodEmojis = ["😢", "🥺", "😌", "🥰", "🤩"]; // 1-5 mood scale
   const moodLabels = ["Very Sad", "Sad", "Neutral", "Happy", "Very Happy"];
   const today = new Date();
 
@@ -152,15 +162,9 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
             periodEntries.length
           : 0;
 
-      const emoji =
-        avgMood > 0
-          ? moodEmojis[Math.min(4, Math.max(0, Math.round(avgMood) - 1))]
-          : "😌";
-
       return {
         label: labels[index],
         mood: avgMood,
-        emoji,
         entries: periodEntries.length,
       };
     });
@@ -172,7 +176,7 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
 
   const chartHeight = 240;
   const chartWidth = 520;
-  const padding = 60;
+  const padding = 70;
   const xDivisions = Math.max(1, labels.length);
 
   const reportTitle =
@@ -183,6 +187,58 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
       : period === "month"
         ? "Your Mood This Month"
         : "Your Mood This Year";
+
+  const pieData =
+    Array.isArray(distribution) && distribution.length > 0
+      ? distribution
+      : [
+          {
+            label: "No Data",
+            population: 1,
+            percentage: 100,
+            color: "#e0e0e0",
+          },
+        ];
+
+  const pieTotal = pieData.reduce(
+    (sum, item) => sum + (Number(item.population) || 0),
+    0,
+  );
+
+  const pieRadius = 70;
+  const pieCx = 90;
+  const pieCy = 90;
+  let cumulativeAngle = -90;
+
+  const pieSlices = pieData
+    .map((item) => {
+      const value = Number(item.population) || 0;
+      const sliceAngle =
+        pieTotal > 0 ? (value / pieTotal) * 360 : 0;
+      const startAngle = cumulativeAngle;
+      const endAngle = cumulativeAngle + sliceAngle;
+      cumulativeAngle = endAngle;
+
+      const startRadians = (Math.PI / 180) * startAngle;
+      const endRadians = (Math.PI / 180) * endAngle;
+
+      const x1 = pieCx + pieRadius * Math.cos(startRadians);
+      const y1 = pieCy + pieRadius * Math.sin(startRadians);
+      const x2 = pieCx + pieRadius * Math.cos(endRadians);
+      const y2 = pieCy + pieRadius * Math.sin(endRadians);
+
+      const largeArcFlag = sliceAngle > 180 ? 1 : 0;
+
+      const d = `
+        M ${pieCx} ${pieCy}
+        L ${x1} ${y1}
+        A ${pieRadius} ${pieRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+        Z
+      `;
+
+      return `<path d="${d}" fill="${item.color || "#4caf50"}" />`;
+    })
+    .join("");
 
   return `
 <!DOCTYPE html>
@@ -249,8 +305,16 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
     .chart-container {
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: stretch;
       margin: 24px 0;
+      gap: 18px;
+    }
+
+    .chart-card {
+      border: 1px solid #e6e6e6;
+      border-radius: 14px;
+      background: #fcfcfc;
+      padding: 18px;
     }
     
     .chart-title {
@@ -259,15 +323,19 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
       color: #333;
       margin-bottom: 16px;
     }
+
+    .chart-title-sm {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
     
     .chart {
       position: relative;
       width: ${chartWidth + padding * 2}px;
       height: ${chartHeight + padding * 2}px;
-      border: 1px solid #e6e6e6;
-      border-radius: 12px;
-      background: #fcfcfc;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     
     .chart-svg {
@@ -278,7 +346,7 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
     .axis-label-y {
       font-size: 12px;
       fill: #666;
-      text-anchor: middle;
+      text-anchor: end;
     }
     
     .axis-label-x {
@@ -298,41 +366,26 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
       stroke-width: 1.5;
     }
     
-    .data-line {
-      fill: none;
-      stroke: #4caf50;
-      stroke-width: 3.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
+    .bar {
+      fill: #4caf50;
     }
 
-    .data-area {
-      fill: url(#areaGradient);
-      stroke: none;
+    .bar-shadow {
+      fill: rgba(76, 175, 80, 0.15);
     }
-    
-    .data-point {
-      fill: #4caf50;
-      stroke: white;
-      stroke-width: 2.5;
-      r: 5;
-    }
-    
-    .mood-emoji {
-      font-size: 18px;
+
+    .bar-value {
+      font-size: 12px;
+      fill: #2e7d32;
+      font-weight: 600;
       text-anchor: middle;
-      dominant-baseline: middle;
     }
     
     .legend {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
+      flex-direction: column;
+      gap: 8px;
       margin-top: 12px;
-      padding: 10px;
-      background: #f8f9fa;
-      border-radius: 10px;
     }
     
     .legend-item {
@@ -340,14 +393,29 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
       align-items: center;
       gap: 8px;
     }
-    
-    .legend-emoji {
-      font-size: 20px;
-    }
-    
+
     .legend-text {
       font-size: 11px;
       color: #666;
+    }
+
+    .legend-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 5px;
+    }
+
+    .legend-value {
+      font-size: 11px;
+      color: #999;
+      margin-left: auto;
+    }
+
+    .pie-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
     }
     
     .footer {
@@ -380,152 +448,90 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
     </div>
     
     <div class="chart-container">
-      <h2 class="chart-title">${chartTitle}</h2>
-      
-      <div class="chart">
-        <svg class="chart-svg" viewBox="0 0 ${chartWidth + padding * 2} ${chartHeight + padding * 2}">
-          <defs>
-            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#4caf50" stop-opacity="0.25" />
-              <stop offset="100%" stop-color="#4caf50" stop-opacity="0" />
-            </linearGradient>
-          </defs>
-          <!-- Grid lines -->
-          ${Array.from({ length: 6 }, (_, i) => {
-            const y = padding + (chartHeight / 5) * i;
-            return `<line x1="${padding}" y1="${y}" x2="${chartWidth + padding}" y2="${y}" class="grid-line" />`;
-          }).join("")}
-          
-          ${Array.from({ length: labels.length + 1 }, (_, i) => {
-            const x = padding + (chartWidth / xDivisions) * i;
-            return `<line x1="${x}" y1="${padding}" x2="${x}" y2="${chartHeight + padding}" class="grid-line" />`;
-          }).join("")}
+      <h2 class="chart-title">${reportTitle} Mood Report</h2>
 
-          <!-- Axis lines -->
-          <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${chartHeight + padding}" class="axis-line" />
-          <line x1="${padding}" y1="${chartHeight + padding}" x2="${chartWidth + padding}" y2="${chartHeight + padding}" class="axis-line" />
-          
-          <!-- Y-axis labels (moods) -->
-          ${moodLabels
-            .map((label, i) => {
-              const y = padding + chartHeight - (chartHeight / 5) * i;
-              return `<text x="${padding - 30}" y="${y}" class="axis-label-y">${label}</text>`;
-            })
-            .join("")}
-          
-          <!-- X-axis labels (days) -->
-          ${labels
-            .map((label, i) => {
-              const x =
-                padding +
-                (chartWidth / xDivisions) * i +
-                chartWidth / (xDivisions * 2);
-              return `<text x="${x}" y="${chartHeight + padding + 25}" class="axis-label-x">${label}</text>`;
-            })
-            .join("")}
-          
-          <!-- Data area -->
-          <polygon
-            points="${dataPoints
-              .map((data, i) => {
+      <div class="chart-card">
+        <div class="chart-title-sm">${chartTitle}</div>
+        <div class="chart">
+          <svg class="chart-svg" viewBox="0 0 ${chartWidth + padding * 2} ${chartHeight + padding * 2}">
+            <!-- Grid lines -->
+            ${Array.from({ length: 6 }, (_, i) => {
+              const y = padding + (chartHeight / 5) * i;
+              return `<line x1="${padding}" y1="${y}" x2="${chartWidth + padding}" y2="${y}" class="grid-line" />`;
+            }).join("")}
+
+            <!-- Axis lines -->
+            <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${chartHeight + padding}" class="axis-line" />
+            <line x1="${padding}" y1="${chartHeight + padding}" x2="${chartWidth + padding}" y2="${chartHeight + padding}" class="axis-line" />
+            
+            <!-- Y-axis labels (moods) -->
+            ${moodLabels
+              .map((label, i) => {
+                const y = padding + chartHeight - (chartHeight / 5) * i;
+                return `<text x="${padding - 12}" y="${y + 4}" class="axis-label-y">${label}</text>`;
+              })
+              .join("")}
+            
+            <!-- X-axis labels (days) -->
+            ${labels
+              .map((label, i) => {
                 const x =
                   padding +
                   (chartWidth / xDivisions) * i +
                   chartWidth / (xDivisions * 2);
-                const y =
-                  data.mood > 0
-                    ? padding +
-                      chartHeight -
-                      (chartHeight / 5) * (data.mood - 1)
-                    : padding + chartHeight / 2;
-                return `${x},${y}`;
+                return `<text x="${x}" y="${chartHeight + padding + 26}" class="axis-label-x">${label}</text>`;
               })
-              .join(" ")} ${
-              padding + chartWidth / (xDivisions * 2)
-            },${chartHeight + padding} ${
-              padding +
-              (chartWidth / xDivisions) * (dataPoints.length - 1) +
-              chartWidth / (xDivisions * 2)
-            },${chartHeight + padding}"
-            class="data-area"
-          />
+              .join("")}
 
-          <!-- Data line -->
-          <polyline 
-            points="${dataPoints
+            <!-- Bars -->
+            ${dataPoints
               .map((data, i) => {
-                const x =
-                  padding +
-                  (chartWidth / xDivisions) * i +
-                  chartWidth / (xDivisions * 2);
-                const y =
-                  data.mood > 0
-                    ? padding +
-                      chartHeight -
-                      (chartHeight / 5) * (data.mood - 1)
-                    : padding + chartHeight / 2;
-                return `${x},${y}`;
+                const slotWidth = chartWidth / xDivisions;
+                const barWidth = Math.max(22, slotWidth * 0.65);
+                const x = padding + slotWidth * i + (slotWidth - barWidth) / 2;
+                const moodValue = Math.max(0, Math.min(5, data.mood || 0));
+                const barHeight = (chartHeight / 5) * moodValue;
+                const y = padding + chartHeight - barHeight;
+                const shadowHeight = chartHeight / 5;
+                const shadowY = padding + chartHeight - shadowHeight;
+                const labelY = y - 10;
+                return `
+                  <rect x="${x}" y="${shadowY}" width="${barWidth}" height="${shadowHeight}" rx="7" class="bar-shadow" />
+                  <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="7" class="bar" />
+                  <text x="${x + barWidth / 2}" y="${labelY}" class="bar-value">${moodValue > 0 ? moodValue.toFixed(1) : "0"}</text>
+                `;
               })
-              .join(" ")}"
-            class="data-line"
-          />
-          
-          <!-- Data points -->
-          ${dataPoints
-            .map((data, i) => {
-              const x =
-                padding +
-                (chartWidth / xDivisions) * i +
-                chartWidth / (xDivisions * 2);
-              const y =
-                data.mood > 0
-                  ? padding + chartHeight - (chartHeight / 5) * (data.mood - 1)
-                  : padding + chartHeight / 2;
-              return `<circle cx="${x}" cy="${y}" class="data-point" />`;
-            })
-            .join("")}
-          
-          <!-- Mood emojis at data points -->
-          ${dataPoints
-            .map((data, i) => {
-              const x =
-                padding +
-                (chartWidth / xDivisions) * i +
-                chartWidth / (xDivisions * 2);
-              const y =
-                data.mood > 0
-                  ? padding +
-                    chartHeight -
-                    (chartHeight / 5) * (data.mood - 1) -
-                    25
-                  : padding + chartHeight / 2 - 25;
-              return `<text x="${x}" y="${y}" class="mood-emoji">${data.emoji}</text>`;
-            })
-            .join("")}
-        </svg>
+              .join("")}
+          </svg>
+        </div>
       </div>
-      
-      <!-- Legend -->
-      <div class="legend">
-        ${moodEmojis
-          .map(
-            (emoji, i) => `
-          <div class="legend-item">
-            <span class="legend-emoji">${emoji}</span>
-            <span class="legend-text">${i === 0 ? "Very Sad" : i === 1 ? "Sad" : i === 2 ? "Neutral" : i === 3 ? "Happy" : "Very Happy"}</span>
-          </div>
-        `,
-          )
-          .join("")}
+
+      <div class="chart-card">
+        <div class="chart-title-sm">Mood Distribution</div>
+        <div class="pie-wrapper">
+          <svg width="220" height="220" viewBox="0 0 180 180">
+            ${pieSlices}
+          </svg>
+        </div>
+        <div class="legend">
+          ${pieData
+            .map(
+              (item) => `
+            <div class="legend-item">
+              <span class="legend-color" style="background:${item.color || "#4caf50"}"></span>
+              <span class="legend-text">${item.label}</span>
+              <span class="legend-value">${item.population ?? 0} (${item.percentage ?? 0}%)</span>
+            </div>
+          `,
+            )
+            .join("")}
+        </div>
       </div>
     </div>
     
     <div class="footer">
       <div style="font-size: 18px; font-weight: 600; color: #4caf50; margin-bottom: 8px;">Moody</div>
       <div>Track your emotions, understand yourself better</div>
-      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
-        <div style="font-size: 11px; color: #888;">Developed by <strong style="color: #666;">Umindu Isith</strong></div>
-      </div>
       <div style="margin-top: 8px; font-size: 10px;">© ${new Date().getFullYear()} Moody. All rights reserved.</div>
     </div>
   </div>
