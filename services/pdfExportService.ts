@@ -42,15 +42,13 @@ export async function generateAndSharePDF(data: ExportData): Promise<void> {
     }
 
     const htmlContent = generateHTMLContent(data, logoSrc);
-    const fileName = `Moody_Report_${data.period}_${new Date().toISOString().split("T")[0]}.pdf`;
+    const fileName = `Moody_Report_${data.period}.pdf`;
 
-    // Generate PDF from HTML
     const { uri } = await Print.printToFileAsync({
       html: htmlContent,
       base64: false,
     });
 
-    // Share the PDF file - user can choose to save it manually
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
         mimeType: "application/pdf",
@@ -75,12 +73,12 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
   const moodLabels = ["Very Sad", "Sad", "Neutral", "Happy", "Very Happy"];
   const today = new Date();
 
+  // --- LOGIC: PROCESS TREND DATA ---
   const buildTrendData = () => {
     let periods: Date[] = [];
     let labels: string[] = [];
 
     if (period === "week") {
-      // Last 7 days
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -90,7 +88,6 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
       const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       labels = periods.map((date) => dayLabels[date.getDay()]);
     } else if (period === "month") {
-      // Last 30 days grouped by weeks
       for (let i = 4; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i * 7);
@@ -99,7 +96,6 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
         labels.push(`Week ${5 - i}`);
       }
     } else if (period === "year") {
-      // Last 12 months
       for (let i = 11; i >= 0; i--) {
         const date = new Date(today);
         date.setMonth(date.getMonth() - i);
@@ -126,7 +122,7 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
 
     const dataPoints = periods.map((periodStart, index) => {
       let periodEntries: any[] = [];
-
+      // (Filtering logic same as before...)
       if (period === "week") {
         periodEntries = moodData.filter((entry) => {
           const entryDate = entry.timestamp.toDate();
@@ -171,9 +167,49 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
 
   const { labels, dataPoints } = buildTrendData();
 
-  const chartHeight = 240;
-  const chartWidth = 520;
-  const padding = 70;
+  // --- CALCULATE ADVANCED INSIGHTS ---
+  const totalEntries = moodData.length;
+
+  const overallSum = moodData.reduce(
+    (sum, entry) => sum + (entry.value || 0),
+    0,
+  );
+  const averageScore =
+    totalEntries > 0 ? (overallSum / totalEntries).toFixed(1) : "0.0";
+
+  // Find dominant mood from distribution
+  let dominantMoodLabel = "N/A";
+  let maxCount = 0;
+  if (Array.isArray(distribution)) {
+    distribution.forEach((item) => {
+      const count = Number(item.population) || 0;
+      if (count > maxCount) {
+        maxCount = count;
+        dominantMoodLabel = item.label;
+      }
+    });
+  }
+
+  // Generate a dynamic summary sentence
+  const avgNum = parseFloat(averageScore);
+  let summaryText = "Keep tracking to see more insights!";
+  if (totalEntries > 0) {
+    if (avgNum >= 4)
+      summaryText =
+        "You've had a fantastic period! Positive vibes are dominant.";
+    else if (avgNum >= 3)
+      summaryText = "Your mood has been balanced and stable recently.";
+    else if (avgNum >= 2)
+      summaryText = "You've had some ups and downs. Be kind to yourself.";
+    else
+      summaryText =
+        "It's been a tough period. Remember to take time for self-care.";
+  }
+
+  // --- CHART DIMENSIONS ---
+  const chartHeight = 280;
+  const chartWidth = 600;
+  const padding = 40;
   const xDivisions = Math.max(1, labels.length);
 
   const reportTitle =
@@ -185,6 +221,7 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
         ? "Your Mood This Month"
         : "Your Mood This Year";
 
+  // --- PIE DATA LOGIC ---
   const pieData =
     Array.isArray(distribution) && distribution.length > 0
       ? distribution
@@ -202,9 +239,11 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
     0,
   );
 
-  const pieRadius = 70;
-  const pieCx = 90;
-  const pieCy = 90;
+  // MAXIMIZED PIE SIZE
+  const pieRadius = 110; // Huge radius
+  const pieCx = 125;
+  const pieCy = 125;
+  const pieViewBoxSize = 250;
   let cumulativeAngle = -90;
 
   const pieSlices = pieData
@@ -244,257 +283,243 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Moody - ${reportTitle} Mood Chart</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
     @page {
       size: A4;
-      margin: 12mm;
+      margin: 10mm;
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.6;
       color: #333;
-      padding: 16px;
-      background: #f8f9fa;
+      background: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
     
     .container {
+      width: 100%;
       max-width: 800px;
       margin: 0 auto;
-      background: white;
-      padding: 24px;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      page-break-inside: avoid;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
     
+    /* HEADER */
     .header {
-      text-align: center;
-      margin-bottom: 24px;
-      padding-bottom: 20px;
-      border-bottom: 3px solid #4caf50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #4caf50;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
     }
-    
+
+    .header-info {
+        text-align: left;
+    }
+
     .logo-image {
-      width: 220px;
+      width: 140px;
       height: auto;
-      margin: 0 auto 10px;
       display: block;
     }
     
-    .subtitle {
-      font-size: 16px;
-      color: #666;
-      margin-bottom: 5px;
-    }
+    .subtitle { font-size: 24px; color: #333; font-weight: 800; letter-spacing: -0.5px; }
+    .date { font-size: 14px; color: #888; font-weight: 500; margin-top: 4px; }
     
-    .date {
-      font-size: 14px;
-      color: #999;
-    }
-    
-    .chart-container {
+    /* LAYOUT GRID */
+    .main-content {
       display: flex;
       flex-direction: column;
-      align-items: stretch;
-      margin: 24px 0;
-      gap: 18px;
+      gap: 20px;
+      flex: 1;
     }
 
-    .chart-card {
-      border: 1px solid #e6e6e6;
-      border-radius: 14px;
-      background: #fcfcfc;
-      padding: 18px;
+    .card {
+      border: 1px solid #eee;
+      border-radius: 16px;
+      background: #fafafa;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
     }
     
-    .chart-title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 16px;
-    }
-
-    .chart-title-sm {
+    .card-title {
       font-size: 16px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 12px;
-    }
-    
-    .chart {
-      position: relative;
-      width: ${chartWidth + padding * 2}px;
-      height: ${chartHeight + padding * 2}px;
-      margin-bottom: 8px;
-    }
-    
-    .chart-svg {
-      width: 100%;
-      height: 100%;
-    }
-    
-    .axis-label-y {
-      font-size: 12px;
-      fill: #666;
-      text-anchor: end;
-    }
-    
-    .axis-label-x {
-      font-size: 12px;
-      fill: #666;
-      text-anchor: middle;
-    }
-    
-    .grid-line {
-      stroke: #eceff1;
-      stroke-width: 1;
-      stroke-dasharray: 4 4;
+      font-weight: 700;
+      color: #444;
+      margin-bottom: 15px;
+      border-left: 4px solid #4caf50;
+      padding-left: 10px;
+      text-transform: uppercase;
     }
 
-    .axis-line {
-      stroke: #cfd8dc;
-      stroke-width: 1.5;
+    /* BAR CHART */
+    .chart-wrapper {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    .chart-svg { width: 100%; height: auto; max-height: ${chartHeight + padding * 2}px; }
+    
+    /* BOTTOM SECTION: SPLIT VIEW */
+    .bottom-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        flex: 1; /* Fill remaining height */
+    }
+
+    /* PIE CHART */
+    .pie-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    .pie-svg-wrapper { margin-bottom: 15px; }
+
+    .legend-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #555; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* INSIGHTS PANEL */
+    .insights-container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        height: 100%;
+        justify-content: center;
+    }
+
+    .stat-row {
+        display: flex;
+        gap: 15px;
+    }
+
+    .stat-box {
+        flex: 1;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 28px;
+        font-weight: 800;
+        color: #4caf50;
     }
     
-    .bar {
-      fill: #4caf50;
+    .stat-label {
+        font-size: 11px;
+        color: #888;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-top: 5px;
     }
 
-    .bar-shadow {
-      fill: rgba(76, 175, 80, 0.15);
-    }
-
-    .bar-value {
-      font-size: 12px;
-      fill: #2e7d32;
-      font-weight: 600;
-      text-anchor: middle;
+    .summary-box {
+        background: #e8f5e9;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #c8e6c9;
     }
     
-    .legend {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .summary-text {
+        font-size: 14px;
+        color: #2e7d32;
+        font-weight: 600;
+        line-height: 1.5;
+        font-style: italic;
     }
 
-    .legend-text {
-      font-size: 11px;
-      color: #666;
-    }
+    /* CHART TEXT STYLES */
+    .axis-label-y { font-size: 10px; fill: #888; text-anchor: end; }
+    .axis-label-x { font-size: 10px; fill: #888; text-anchor: middle; }
+    .bar-value { font-size: 10px; fill: #2e7d32; font-weight: 700; text-anchor: middle; }
+    .grid-line { stroke: #eceff1; stroke-width: 1; stroke-dasharray: 4 4; }
+    .axis-line { stroke: #e0e0e0; stroke-width: 1; }
+    .bar { fill: #4caf50; }
+    .bar-shadow { fill: rgba(76, 175, 80, 0.1); }
 
-    .legend-color {
-      width: 10px;
-      height: 10px;
-      border-radius: 5px;
-    }
-
-    .legend-value {
-      font-size: 11px;
-      color: #999;
-      margin-left: auto;
-    }
-
-    .pie-wrapper {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 8px;
-    }
-    
     .footer {
       text-align: center;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 2px solid #e0e0e0;
-      color: #999;
-      font-size: 12px;
-    }
-    
-    @media print {
-      body {
-        background: white;
-        padding: 20px;
-      }
-      
-      .container {
-        box-shadow: none;
-      }
+      margin-top: auto;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+      color: #aaa;
+      font-size: 10px;
     }
   </style>
 </head>
 <body>
   <div class="container">
+    
     <div class="header">
-      ${logoSrc ? `<img class="logo-image" src="${logoSrc}" alt="Moody Logo" />` : ""}
-      <div class="subtitle">${reportTitle} Mood Trend</div>
-      <div class="date">Generated on ${currentDate}</div>
+        <div class="header-info">
+            <div class="subtitle">${reportTitle} Report</div>
+            <div class="date">${currentDate}</div>
+        </div>
+        ${logoSrc ? `<img class="logo-image" src="${logoSrc}" alt="Moody Logo" />` : ""}
     </div>
     
-    <div class="chart-container">
-      <h2 class="chart-title">${reportTitle} Mood Report</h2>
-
-      <div class="chart-card">
-        <div class="chart-title-sm">${chartTitle}</div>
-        <div class="chart">
+    <div class="main-content">
+      
+      <div class="card">
+        <div class="card-title">Mood Trend</div>
+        <div class="chart-wrapper">
           <svg class="chart-svg" viewBox="0 0 ${chartWidth + padding * 2} ${chartHeight + padding * 2}">
-            <!-- Grid lines -->
             ${Array.from({ length: 6 }, (_, i) => {
               const y = padding + (chartHeight / 5) * i;
               return `<line x1="${padding}" y1="${y}" x2="${chartWidth + padding}" y2="${y}" class="grid-line" />`;
             }).join("")}
 
-            <!-- Axis lines -->
             <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${chartHeight + padding}" class="axis-line" />
             <line x1="${padding}" y1="${chartHeight + padding}" x2="${chartWidth + padding}" y2="${chartHeight + padding}" class="axis-line" />
             
-            <!-- Y-axis labels (moods) -->
             ${moodLabels
               .map((label, i) => {
                 const y = padding + chartHeight - (chartHeight / 5) * i;
-                return `<text x="${padding - 12}" y="${y + 4}" class="axis-label-y">${label}</text>`;
+                return `<text x="${padding - 10}" y="${y + 3}" class="axis-label-y">${label}</text>`;
               })
               .join("")}
             
-            <!-- X-axis labels (days) -->
             ${labels
               .map((label, i) => {
                 const x =
                   padding +
                   (chartWidth / xDivisions) * i +
                   chartWidth / (xDivisions * 2);
-                return `<text x="${x}" y="${chartHeight + padding + 26}" class="axis-label-x">${label}</text>`;
+                return `<text x="${x}" y="${chartHeight + padding + 15}" class="axis-label-x">${label}</text>`;
               })
               .join("")}
 
-            <!-- Bars -->
             ${dataPoints
               .map((data, i) => {
                 const slotWidth = chartWidth / xDivisions;
-                const barWidth = Math.max(22, slotWidth * 0.65);
+                const barWidth = Math.max(18, slotWidth * 0.5);
                 const x = padding + slotWidth * i + (slotWidth - barWidth) / 2;
                 const moodValue = Math.max(0, Math.min(5, data.mood || 0));
                 const barHeight = (chartHeight / 5) * moodValue;
                 const y = padding + chartHeight - barHeight;
                 const shadowHeight = chartHeight / 5;
                 const shadowY = padding + chartHeight - shadowHeight;
-                const labelY = y - 10;
+
                 return `
-                  <rect x="${x}" y="${shadowY}" width="${barWidth}" height="${shadowHeight}" rx="7" class="bar-shadow" />
-                  <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="7" class="bar" />
-                  <text x="${x + barWidth / 2}" y="${labelY}" class="bar-value">${moodValue > 0 ? moodValue.toFixed(1) : "0"}</text>
+                  <rect x="${x}" y="${shadowY}" width="${barWidth}" height="${shadowHeight}" rx="4" class="bar-shadow" />
+                  <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" class="bar" />
+                  ${moodValue > 0 ? `<text x="${x + barWidth / 2}" y="${y - 6}" class="bar-value">${moodValue.toFixed(1)}</text>` : ""}
                 `;
               })
               .join("")}
@@ -502,33 +527,60 @@ function generateHTMLContent(data: ExportData, logoSrc: string): string {
         </div>
       </div>
 
-      <div class="chart-card">
-        <div class="chart-title-sm">Mood Distribution</div>
-        <div class="pie-wrapper">
-          <svg width="220" height="220" viewBox="0 0 180 180">
-            ${pieSlices}
-          </svg>
-        </div>
-        <div class="legend">
-          ${pieData
-            .map(
-              (item) => `
-            <div class="legend-item">
-              <span class="legend-color" style="background:${item.color || "#4caf50"}"></span>
-              <span class="legend-text">${item.label}</span>
-              <span class="legend-value">${item.population ?? 0} (${item.percentage ?? 0}%)</span>
+      <div class="bottom-section">
+        
+        <div class="card pie-container">
+            <div class="card-title" style="align-self: flex-start;">Distribution</div>
+            <div class="pie-svg-wrapper">
+                <svg width="${pieViewBoxSize}" height="${pieViewBoxSize}" viewBox="0 0 ${pieViewBoxSize} ${pieViewBoxSize}">
+                    ${pieSlices}
+                </svg>
             </div>
-          `,
-            )
-            .join("")}
+            <div class="legend-grid">
+                ${pieData
+                  .map(
+                    (item) => `
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:${item.color || "#4caf50"}"></div>
+                        <span>${item.label} (${item.percentage ?? 0}%)</span>
+                    </div>
+                `,
+                  )
+                  .join("")}
+            </div>
         </div>
+
+        <div class="card insights-container">
+            <div class="card-title">Analysis</div>
+            
+            <div class="stat-row">
+                <div class="stat-box">
+                    <div class="stat-value">${averageScore}</div>
+                    <div class="stat-label">Avg Mood</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">${totalEntries}</div>
+                    <div class="stat-label">Total Logs</div>
+                </div>
+            </div>
+
+            <div class="stat-box" style="width: 100%;">
+                <div class="stat-value" style="font-size: 20px;">${dominantMoodLabel}</div>
+                <div class="stat-label">Dominant Feeling</div>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-text">"${summaryText}"</div>
+            </div>
+        </div>
+
       </div>
     </div>
     
     <div class="footer">
-      <div style="font-size: 18px; font-weight: 600; color: #4caf50; margin-bottom: 8px;">Moody</div>
+      <div style="font-size: 14px; font-weight: 700; color: #4caf50;">Moody</div>
       <div>Track your emotions, understand yourself better</div>
-      <div style="margin-top: 8px; font-size: 10px;">© ${new Date().getFullYear()} Moody. All rights reserved.</div>
+      <div style="margin-top: 5px;">© ${new Date().getFullYear()} Moody. All rights reserved.</div>
     </div>
   </div>
 </body>
