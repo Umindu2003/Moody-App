@@ -65,10 +65,7 @@ export async function generateAndSharePDF(data: ExportData): Promise<void> {
   }
 }
 
-function generateHTMLContent(
-  data: ExportData,
-  logoSrc: string,
-): string {
+function generateHTMLContent(data: ExportData, logoSrc: string): string {
   const { period, moodData, distribution } = data;
   const currentDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -213,8 +210,7 @@ function generateHTMLContent(
   const pieSlices = pieData
     .map((item) => {
       const value = Number(item.population) || 0;
-      const sliceAngle =
-        pieTotal > 0 ? (value / pieTotal) * 360 : 0;
+      const sliceAngle = pieTotal > 0 ? (value / pieTotal) * 360 : 0;
       const startAngle = cumulativeAngle;
       const endAngle = cumulativeAngle + sliceAngle;
       cumulativeAngle = endAngle;
