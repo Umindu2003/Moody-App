@@ -441,7 +441,7 @@ export default function Stats() {
         setAiAdvice(data.analysis);
       } else {
         setAiAdvice(
-          "Hmm, I couldn't analyze your moods right now. Try again later! 🌈",
+          "Hmm, I couldn't analyze your moods right now. Try again later! ",
         );
       }
     } catch (error) {
@@ -516,11 +516,9 @@ export default function Stats() {
               <Text style={styles.subtitle}>Track your mood journey</Text>
             </View>
             <View style={styles.headerButtons}>
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={handleAskAI}
-              >
-                <Ionicons name="sparkles" size={24} color="white" />
+              <TouchableOpacity style={styles.aiButton} onPress={handleAskAI}>
+                <Text style={styles.aiButtonText}>Moody AI</Text>
+                <Ionicons name="sparkles" size={15} color="white" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerButton}
@@ -1087,6 +1085,21 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  aiButton: {
+    height: 48,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  aiButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "white",
   },
   exportButton: {
     width: 48,

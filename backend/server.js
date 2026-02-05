@@ -444,11 +444,24 @@ app.get("/api/ai/analyze/:userId", async (req, res) => {
       moodCounts[a] > moodCounts[b] ? a : b,
     );
 
-    const prompt = `Act as a supportive best friend. Analyze this mood history: [${moodSummary}].
-Average mood: ${avgMood.toFixed(1)}/5.
-Most common: ${mostCommonMood}.
-Give a 1-sentence observation and 1 short, fun recommendation.
-Use emojis. Keep it under 50 words.`;
+    const prompt = `
+      Act as a supportive best friend.
+      Analyze this mood history: [${moodSummary}].
+
+      Average mood: ${avgMood.toFixed(1)}/5
+      Most common mood: ${mostCommonMood}
+
+      Give:
+      - 1 clear observation (statement only, no questions)
+      - 1 short, friendly recommendation written directly to the user
+
+      Rules:
+      - Do NOT ask questions
+      - Do NOT use "we" or "let's"
+      - Use "you" or "your"
+      - Keep it under 50 words
+      - Use emojis naturally (max 4)
+      `;
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
