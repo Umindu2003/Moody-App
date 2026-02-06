@@ -3,26 +3,26 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  Image,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    Image,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { LineChart, PieChart } from "react-native-chart-kit";
 import LoadingScreen from "../components/LoadingScreen";
 import {
-  getMoodEntries,
-  getMoodInsights,
-  getUserId,
+    getMoodEntries,
+    getMoodInsights,
+    getUserId,
 } from "../services/moodService";
 import { generateAndSharePDF } from "../services/pdfExportService";
 import { MOODS, MoodInsights } from "../types/mood";
@@ -35,9 +35,9 @@ const getApiBaseUrl = () => {
     return "http://localhost:3001/api";
   }
   if (Platform.OS === "android") {
-    return "http://192.168.1.2:3001/api";
+    return "http://192.168.1.4:3001/api";
   }
-  return "http://192.168.1.2:3001/api";
+  return "http://192.168.1.4:3001/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();

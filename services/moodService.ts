@@ -12,10 +12,10 @@ const getApiBaseUrl = () => {
   if (Platform.OS === "android") {
     // For Android physical device, use your local network IP
     // For Android emulator, use 10.0.2.2
-    return "http://192.168.1.2:3001/api";
+    return "http://192.168.1.4:3001/api";
   }
   // For iOS simulator and physical devices, use your local network IP
-  return "http://192.168.1.2:3001/api";
+  return "http://192.168.1.4:3001/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();

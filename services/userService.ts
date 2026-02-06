@@ -11,9 +11,9 @@ const getApiBaseUrl = () => {
     return "http://localhost:3001/api";
   }
   if (Platform.OS === "android") {
-    return "http://192.168.1.2:3001/api";
+    return "http://192.168.1.4:3001/api";
   }
-  return "http://192.168.1.2:3001/api";
+  return "http://192.168.1.4:3001/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();
