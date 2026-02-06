@@ -4,18 +4,9 @@ import { MoodInsights } from "../types/mood";
 
 const USER_ID_KEY = "@moody_user_id";
 
-// Get the correct API base URL based on platform
+// Production API base URL
 const getApiBaseUrl = () => {
-  if (Platform.OS === "web") {
-    return "http://localhost:3001/api";
-  }
-  if (Platform.OS === "android") {
-    // For Android physical device, use your local network IP
-    // For Android emulator, use 10.0.2.2
-    return "http://192.168.1.4:3001/api";
-  }
-  // For iOS simulator and physical devices, use your local network IP
-  return "http://192.168.1.4:3001/api";
+  return "https://moody-app-k08e.onrender.com/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();

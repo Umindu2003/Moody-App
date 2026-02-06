@@ -6,26 +6,25 @@ module.exports = {
     slug: "Moody",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/MoodyLogo.png",
     scheme: "moody",
     userInterfaceStyle: "automatic",
-    newArchEnabled: true,
+    newArchEnabled: true, // <--- CHANGED BACK TO TRUE (Required by Reanimated)
     ios: {
       supportsTablet: true,
     },
     android: {
+      package: "com.uminduisith.moody",
       adaptiveIcon: {
-        backgroundColor: "#E6F4FE",
-        foregroundImage: "./assets/images/android-icon-foreground.png",
-        backgroundImage: "./assets/images/android-icon-background.png",
-        monochromeImage: "./assets/images/android-icon-monochrome.png",
+        foregroundImage: "./assets/images/MoodyLogo.png",
+        backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
     },
     web: {
       output: "static",
-      favicon: "./assets/images/favicon.png",
+      favicon: "./assets/images/MoodyLogo.png",
     },
     plugins: [
       "expo-router",
@@ -33,7 +32,7 @@ module.exports = {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/splash-icon.png",
+          image: "./assets/images/MoodyLogo.png",
           imageWidth: 200,
           resizeMode: "contain",
           backgroundColor: "#ffffff",
@@ -45,7 +44,12 @@ module.exports = {
     ],
     experiments: {
       typedRoutes: true,
-      reactCompiler: true,
+      reactCompiler: false, // Keep this false for stability
+    },
+    extra: {
+      eas: {
+        projectId: "6300d073-00b2-4b7c-99ca-719bb5c8ef48",
+      },
     },
   },
 };

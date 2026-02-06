@@ -9,13 +9,12 @@ import {
     Dimensions,
     Image,
     Modal,
-    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import { LineChart, PieChart } from "react-native-chart-kit";
 import LoadingScreen from "../components/LoadingScreen";
@@ -29,15 +28,9 @@ import { MOODS, MoodInsights } from "../types/mood";
 
 const screenWidth = Dimensions.get("window").width;
 
-// Get the correct API base URL based on platform
+// Production API base URL
 const getApiBaseUrl = () => {
-  if (Platform.OS === "web") {
-    return "http://localhost:3001/api";
-  }
-  if (Platform.OS === "android") {
-    return "http://192.168.1.4:3001/api";
-  }
-  return "http://192.168.1.4:3001/api";
+  return "https://moody-app-k08e.onrender.com/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();

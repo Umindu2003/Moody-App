@@ -1,19 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
 
 const USER_ID_KEY = "@moody_user_id";
 const USER_NAME_KEY = "@moody_user_name";
 const USER_ONBOARDED_KEY = "@moody_user_onboarded";
 
-// Get the correct API base URL based on platform
+// Production API base URL
 const getApiBaseUrl = () => {
-  if (Platform.OS === "web") {
-    return "http://localhost:3001/api";
-  }
-  if (Platform.OS === "android") {
-    return "http://192.168.1.4:3001/api";
-  }
-  return "http://192.168.1.4:3001/api";
+  return "https://moody-app-k08e.onrender.com/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();
