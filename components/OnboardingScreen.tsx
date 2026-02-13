@@ -1,17 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Easing,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Animated,
+  Easing,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { registerUser } from "../services/userService";
 
@@ -28,36 +29,48 @@ export default function OnboardingScreen({
   const [step, setStep] = useState(0); // 0: welcome, 1: name input
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current; // ✅ start visible
   const slideAnim = useRef(new Animated.Value(50)).current;
-  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
   const logoRotate = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    // Initial animations
+  const startWelcomeEntrance = () => {
+    fadeAnim.stopAnimation();
+    slideAnim.stopAnimation();
+    logoScale.stopAnimation();
+
+    fadeAnim.setValue(0);
+    slideAnim.setValue(50);
+    logoScale.setValue(0.85);
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 650,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.spring(logoScale, {
         toValue: 1,
-        friction: 5,
-        tension: 40,
+        friction: 6,
+        tension: 45,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 600,
-        delay: 300,
-        easing: Easing.out(Easing.back(1.5)),
+        duration: 550,
+        delay: 120,
+        easing: Easing.out(Easing.back(1.25)),
         useNativeDriver: true,
       }),
     ]).start();
+  };
 
-    // Continuous subtle rotation for logo
+  useEffect(() => {
+    // Only animate the welcome screen on mount
+    startWelcomeEntrance();
+
     const rotateAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(logoRotate, {
@@ -74,32 +87,30 @@ export default function OnboardingScreen({
         }),
       ]),
     );
-    rotateAnimation.start();
 
+    rotateAnimation.start();
     return () => rotateAnimation.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ On step change:
+  // - Step 0: run entrance animation
+  // - Step 1: force opacity visible (Android bug fix)
+  useEffect(() => {
+    if (step === 0) {
+      startWelcomeEntrance();
+    } else {
+      fadeAnim.stopAnimation();
+      fadeAnim.setValue(1); // ✅ always visible on Android for step 1
+      slideAnim.setValue(0);
+      logoScale.setValue(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   const handleGetStarted = () => {
-    // Animate transition to step 1
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      setStep(1);
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
+    setError("");
+    setStep(1);
   };
 
   const handleContinue = async () => {
@@ -112,7 +123,6 @@ export default function OnboardingScreen({
     setError("");
     Keyboard.dismiss();
 
-    // Button press animation
     Animated.sequence([
       Animated.timing(buttonScale, {
         toValue: 0.95,
@@ -129,14 +139,11 @@ export default function OnboardingScreen({
     try {
       await registerUser(name.trim());
 
-      // Success animation before completing
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 400,
+        duration: 350,
         useNativeDriver: true,
-      }).start(() => {
-        onComplete();
-      });
+      }).start(() => onComplete());
     } catch (err) {
       setError("Failed to create account. Please try again.");
       setLoading(false);
@@ -150,25 +157,16 @@ export default function OnboardingScreen({
 
   if (step === 0) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.backgroundCircle1} />
         <View style={styles.backgroundCircle2} />
         <View style={styles.backgroundCircle3} />
 
-        <Animated.View
-          style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <Animated.View
             style={[
               styles.logoContainer,
-              {
-                transform: [{ scale: logoScale }, { rotate: logoRotation }],
-              },
+              { transform: [{ scale: logoScale }, { rotate: logoRotation }] },
             ]}
           >
             <Image
@@ -181,9 +179,7 @@ export default function OnboardingScreen({
           <Animated.View
             style={[
               styles.textContent,
-              {
-                transform: [{ translateY: slideAnim }],
-              },
+              { transform: [{ translateY: slideAnim }] },
             ]}
           >
             <Text style={styles.welcomeTitle}>Welcome to</Text>
@@ -203,10 +199,12 @@ export default function OnboardingScreen({
               <Ionicons name="happy-outline" size={24} color="#4caf50" />
               <Text style={styles.featureText}>Log your daily mood</Text>
             </View>
+
             <View style={styles.featureItem}>
               <Ionicons name="stats-chart-outline" size={24} color="#4caf50" />
               <Text style={styles.featureText}>View insights & patterns</Text>
             </View>
+
             <View style={styles.featureItem}>
               <Ionicons
                 name="notifications-outline"
@@ -220,100 +218,98 @@ export default function OnboardingScreen({
           <TouchableOpacity
             style={styles.getStartedButton}
             onPress={handleGetStarted}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <Text style={styles.getStartedText}>Get Started</Text>
             <Ionicons name="arrow-forward" size={20} color="white" />
           </TouchableOpacity>
         </Animated.View>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  // ✅ Step 1: Android-friendly keyboard behavior + forced visible opacity
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.backgroundCircle1} />
-      <View style={styles.backgroundCircle2} />
-
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-          },
-        ]}
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined} // ✅ NOT "height" on Android
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            setStep(0);
-            setError("");
-          }}
-        >
-          <Ionicons name="arrow-back" size={24} color="#4caf50" />
-        </TouchableOpacity>
+        <View style={styles.backgroundCircle1} />
+        <View style={styles.backgroundCircle2} />
 
-        <View style={styles.nameInputContainer}>
-          <Text style={styles.nameTitle}>What's your name?</Text>
-          <Text style={styles.nameSubtitle}>
-            Let's personalize your experience
-          </Text>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => {
+              setStep(0);
+              setError("");
+              setName("");
+            }}
+          >
+            <Ionicons name="arrow-back" size={24} color="#4caf50" />
+          </TouchableOpacity>
 
-          <View style={styles.inputWrapper}>
-            <Ionicons
-              name="person-outline"
-              size={24}
-              color="#4caf50"
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Enter your name"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                setError("");
-              }}
-              autoFocus
-              maxLength={30}
-              autoCapitalize="words"
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
-            />
-          </View>
+          <View style={styles.nameInputContainer}>
+            <Text style={styles.nameTitle}>What's your name?</Text>
+            <Text style={styles.nameSubtitle}>
+              Let's personalize your experience
+            </Text>
 
-          {error ? (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={16} color="#f44336" />
-              <Text style={styles.errorText}>{error}</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="person-outline"
+                size={24}
+                color="#4caf50"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.nameInput}
+                placeholder="Enter your name"
+                placeholderTextColor="#999"
+                value={name}
+                onChangeText={(text) => {
+                  setName(text);
+                  setError("");
+                }}
+                autoFocus
+                maxLength={30}
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={handleContinue}
+              />
             </View>
-          ) : null}
 
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <TouchableOpacity
-              style={[
-                styles.continueButton,
-                (!name.trim() || loading) && styles.continueButtonDisabled,
-              ]}
-              onPress={handleContinue}
-              disabled={!name.trim() || loading}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.continueText}>
-                {loading ? "Creating your profile..." : "Continue"}
-              </Text>
-              {!loading && (
-                <Ionicons name="checkmark-circle" size={20} color="white" />
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Animated.View>
-    </KeyboardAvoidingView>
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#f44336" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity
+                style={[
+                  styles.continueButton,
+                  (!name.trim() || loading) && styles.continueButtonDisabled,
+                ]}
+                onPress={handleContinue}
+                disabled={!name.trim() || loading}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.continueText}>
+                  {loading ? "Creating your profile..." : "Continue"}
+                </Text>
+                {!loading && (
+                  <Ionicons name="checkmark-circle" size={20} color="white" />
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -352,11 +348,11 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 30,
-    paddingTop: 60,
+    paddingTop: 30,
   },
   logoContainer: {
     alignItems: "center",
-    marginTop: 40,
+    marginTop: 30,
     marginBottom: 20,
   },
   logo: {
@@ -388,7 +384,7 @@ const styles = StyleSheet.create({
   featuresContainer: {
     marginTop: 20,
     marginBottom: 40,
-    gap: 15,
+    // gap is ok in new RN, but keeping safe:
   },
   featureItem: {
     flexDirection: "row",
@@ -396,7 +392,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 15,
     borderRadius: 12,
-    gap: 15,
+    marginBottom: 15,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -404,6 +400,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   featureText: {
+    marginLeft: 15,
     fontSize: 16,
     color: "#333",
     fontWeight: "500",
@@ -416,7 +413,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 40,
     borderRadius: 30,
-    gap: 10,
+    marginTop: 5,
     shadowColor: "#4caf50",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -427,6 +424,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+    marginRight: 10,
   },
   backButton: {
     width: 44,
@@ -444,7 +442,7 @@ const styles = StyleSheet.create({
   nameInputContainer: {
     flex: 1,
     justifyContent: "center",
-    paddingBottom: 100,
+    paddingBottom: 80,
   },
   nameTitle: {
     fontSize: 32,
@@ -482,10 +480,10 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
     marginBottom: 15,
   },
   errorText: {
+    marginLeft: 6,
     color: "#f44336",
     fontSize: 14,
   },
@@ -496,7 +494,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#4caf50",
     paddingVertical: 18,
     borderRadius: 15,
-    gap: 10,
     shadowColor: "#4caf50",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -511,5 +508,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+    marginRight: 10,
   },
 });
